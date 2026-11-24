@@ -224,25 +224,16 @@
           <aside class="route-panel" aria-live="polite">
             <h3 id="routePointName">Selecione um posto no mapa ou na lista</h3>
             <p id="routePointAddress" class="info-line">
-              Clique em "Ver no mapa / Rota" em qualquer UBS para ver detalhes e abrir a rota no Google Maps.
+              Clique em "Ver no mapa / Rota" em qualquer UBS para ver o endereço completo, favoritar, compartilhar ou abrir no Google Maps.
             </p>
-            <div id="modalTimesGrid" class="modal-times-grid" style="display: none;">
-              <div class="time-box">
-                <span class="time-box-label">A pé (~5 km/h)</span>
-                <span class="time-box-value" id="timeWalk">—</span>
-              </div>
-              <div class="time-box">
-                <span class="time-box-label">Carro (~35 km/h)</span>
-                <span class="time-box-value" id="timeCar">—</span>
-              </div>
-              <div class="time-box">
-                <span class="time-box-label">Bicicleta (~15 km/h)</span>
-                <span class="time-box-value" id="timeBike">—</span>
-              </div>
-              <div class="time-box">
-                <span class="time-box-label">Ônibus / Moto (~22 km/h)</span>
-                <span class="time-box-value" id="timeTransit">—</span>
-              </div>
+            <p id="routePointDetails" class="info-line" style="display: none;"></p>
+            <div id="routePanelActions" class="card-actions" style="display: none; border-top: none; padding-top: 4px; margin-top: 0;">
+              <button id="routeFavBtn" type="button" class="btn btn-outline btn-sm btn-fav" aria-pressed="false">
+                Favoritar
+              </button>
+              <button id="routeShareBtn" type="button" class="btn btn-outline btn-sm">
+                Compartilhar
+              </button>
             </div>
             <a
               id="googleMapsLink"

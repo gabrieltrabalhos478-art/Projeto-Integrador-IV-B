@@ -36,11 +36,10 @@ const pointsContainer = document.getElementById("pointsContainer");
 
 const routePointName = document.getElementById("routePointName");
 const routePointAddress = document.getElementById("routePointAddress");
-const modalTimesGrid = document.getElementById("modalTimesGrid");
-const timeWalk = document.getElementById("timeWalk");
-const timeCar = document.getElementById("timeCar");
-const timeBike = document.getElementById("timeBike");
-const timeTransit = document.getElementById("timeTransit");
+const routePointDetails = document.getElementById("routePointDetails");
+const routePanelActions = document.getElementById("routePanelActions");
+const routeFavBtn = document.getElementById("routeFavBtn");
+const routeShareBtn = document.getElementById("routeShareBtn");
 const googleMapsLink = document.getElementById("googleMapsLink");
 const portalToast = document.getElementById("portalToast");
 
@@ -186,11 +185,24 @@ function selectPoint(pointId, scrollToMap = true) {
     [point.address, point.neighborhood, point.city_name].filter(Boolean).join(" — ") ||
     "Endereço não informado";
 
+  const detailsParts = [];
+  if (point.phone) detailsParts.push(`Tel: ${point.phone}`);
+  if (point.opening_hours) detailsParts.push(`Horário: ${point.opening_hours}`);
+  if (detailsParts.length > 0) {
+    routePointDetails.textContent = detailsParts.join(" • ");
+    routePointDetails.style.display = "block";
+  } else {
+    routePointDetails.style.display = "none";
+  }
+
+  const isFav = getFavorites().has(point.id);
+  routeFavBtn.setAttribute("aria-pressed", isFav ? "true" : "false");
+  routeFavBtn.textContent = isFav ? "Favoritado" : "Favoritar";
+  routePanelActions.style.display = "flex";
+
   const hasCoords = point.latitude != null && point.longitude != null;
   if (hasCoords) {
     const dest = `${point.latitude},${point.longitude}`;
-    // Só fixa origin no Google Maps quando o usuário informou um CEP/endereço manualmente;
-    // caso contrário, deixa o próprio Google Maps usar "Seu local" em tempo real.
     const originParam =
       userLocation && userLocation.fromAddress
         ? `&origin=${userLocation.lat},${userLocation.lng}`
@@ -199,22 +211,6 @@ function selectPoint(pointId, scrollToMap = true) {
     googleMapsLink.style.display = "inline-flex";
   } else {
     googleMapsLink.style.display = "none";
-  }
-
-  if (userLocation && hasCoords) {
-    const km = haversineKm(
-      userLocation.lat,
-      userLocation.lng,
-      point.latitude,
-      point.longitude
-    );
-    timeWalk.textContent = formatDurationMinutes(km, 5);
-    timeCar.textContent = formatDurationMinutes(km, 35);
-    timeBike.textContent = formatDurationMinutes(km, 15);
-    timeTransit.textContent = formatDurationMinutes(km, 22);
-    modalTimesGrid.style.display = "grid";
-  } else {
-    modalTimesGrid.style.display = "none";
   }
 
   renderPoints(false);
@@ -330,7 +326,9 @@ function applyDistancesAndNearest(autoSelectNearest = false) {
     if (nearest) {
       nearestSection.style.display = "block";
       nearestTitle.textContent = `Posto mais próximo: ${nearest.name}${nearest.city_name ? ` (${nearest.city_name})` : ""}`;
-      nearestBody.textContent = `${formatDistance(nearest._distanceKm)} de distância • A pé: ${formatDurationMinutes(nearest._distanceKm, 5)} • Carro: ${formatDurationMinutes(nearest._distanceKm, 35)} • Bicicleta: ${formatDurationMinutes(nearest._distanceKm, 15)}.`;
+      nearestBody.textContent =
+        [nearest.address, nearest.neighborhood].filter(Boolean).join(" — ") ||
+        "Endereço não informado";
       if (autoSelectNearest && !selectedPointId) {
         selectPoint(nearest.id, false);
         return;
@@ -765,6 +763,55 @@ focusPointBtn.addEventListener("click", () => {
   if (selectedPointId) selectPoint(selectedPointId, true);
 });
 
+async function toggleFavoriteById(id) {
+  const favs = getFavorites();
+  if (favs.has(id)) {
+    favs.delete(id);
+    showToast("Ponto removido dos favoritos.");
+  } else {
+    favs.add(id);
+    showToast("Ponto salvo nos favoritos!");
+  }
+  saveFavorites(favs);
+  if (selectedPointId === id) {
+    const isFav = favs.has(id);
+    routeFavBtn.setAttribute("aria-pressed", isFav ? "true" : "false");
+    routeFavBtn.textContent = isFav ? "Favoritado" : "Favoritar";
+  }
+  renderPoints(false);
+}
+
+async function sharePointById(id) {
+  const point = currentPoints.find((p) => p.id === id);
+  if (!point) return;
+  const shareUrl = `${window.location.origin}/?city=${point.city_id}&point=${point.id}`;
+  const shareText = `Ponto de vacinação: ${point.name} (${point.city_name || currentCityDetail?.name || "Alagoas"}) — ${point.address || "Endereço não informado"}`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: point.name, text: shareText, url: shareUrl });
+      return;
+    } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+    showToast("Link e endereço copiados para compartilhar!");
+  } catch {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+}
+
+routeFavBtn?.addEventListener("click", () => {
+  if (selectedPointId) toggleFavoriteById(selectedPointId);
+});
+
+routeShareBtn?.addEventListener("click", () => {
+  if (selectedPointId) sharePointById(selectedPointId);
+});
+
 pointsContainer.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-action]");
   if (!btn) return;
@@ -776,39 +823,11 @@ pointsContainer.addEventListener("click", async (e) => {
     return;
   }
   if (action === "fav") {
-    const favs = getFavorites();
-    if (favs.has(id)) {
-      favs.delete(id);
-      showToast("Ponto removido dos favoritos.");
-    } else {
-      favs.add(id);
-      showToast("Ponto salvo nos favoritos!");
-    }
-    saveFavorites(favs);
-    renderPoints(false);
+    await toggleFavoriteById(id);
     return;
   }
   if (action === "share") {
-    const point = currentPoints.find((p) => p.id === id);
-    if (!point) return;
-    const shareUrl = `${window.location.origin}/?city=${point.city_id}&point=${point.id}`;
-    const shareText = `Ponto de vacinação: ${point.name} (${point.city_name || currentCityDetail?.name || "Alagoas"}) — ${point.address || "Endereço não informado"}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: point.name, text: shareText, url: shareUrl });
-        return;
-      } catch {}
-    }
-    try {
-      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-      showToast("Link e endereço copiados para compartilhar!");
-    } catch {
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    }
+    await sharePointById(id);
   }
 });
 
