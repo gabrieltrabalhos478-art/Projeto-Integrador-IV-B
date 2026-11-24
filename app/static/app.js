@@ -93,9 +93,6 @@ function collapseGeoStep(summary) {
   geoExpanded.style.display = "none";
   geoCompact.style.display = "flex";
   geoSummaryText.textContent = summary;
-  try {
-    localStorage.setItem(GEO_DONE_KEY, "1");
-  } catch {}
 }
 
 function expandGeoStep() {
@@ -532,9 +529,17 @@ function renderPoints(shouldFitBounds = true) {
 
 async function loadInitialData() {
   saveFavorites(getFavorites());
-  if (localStorage.getItem(GEO_DONE_KEY) === "1") {
-    collapseGeoStep("Busca manual (clique em Alterar localização se quiser usar GPS ou CEP)");
-  }
+  try {
+    const savedGeo = localStorage.getItem(GEO_DONE_KEY);
+    if (savedGeo && savedGeo.startsWith("{")) {
+      const parsed = JSON.parse(savedGeo);
+      if (parsed.lat && parsed.lng) {
+        userLocation = parsed;
+        sortSelect.value = "distance";
+        collapseGeoStep(`Localização salva: ${parsed.label || "CEP/Endereço"}`);
+      }
+    }
+  } catch {}
 
   const res = await fetch("/cities");
   allCities = await res.json();
@@ -675,6 +680,12 @@ async function locateByQuery() {
     }
     userLocation = { lat: Number(found.lat), lng: Number(found.lon), fromAddress: true };
     const shortLabel = found.display_name.split(",").slice(0, 2).join(",");
+    try {
+      localStorage.setItem(
+        GEO_DONE_KEY,
+        JSON.stringify({ ...userLocation, label: shortLabel })
+      );
+    } catch {}
     sortSelect.value = "distance";
     collapseGeoStep(`Localização definida: ${shortLabel}`);
     showToast("Endereço localizado! Clique em Mostrar Postos para ver os mais próximos.");
@@ -692,9 +703,17 @@ cepInput.addEventListener("keydown", (e) => {
 });
 skipGeoBtn.addEventListener("click", () => {
   userLocation = null;
+  try {
+    localStorage.removeItem(GEO_DONE_KEY);
+  } catch {}
   collapseGeoStep("Busca manual (sem localização definida)");
 });
-changeGeoBtn.addEventListener("click", expandGeoStep);
+changeGeoBtn.addEventListener("click", () => {
+  try {
+    localStorage.removeItem(GEO_DONE_KEY);
+  } catch {}
+  expandGeoStep();
+});
 
 modeMunicipalBtn.addEventListener("click", () => setScope("municipal"));
 modeStateBtn.addEventListener("click", () => setScope("state"));
