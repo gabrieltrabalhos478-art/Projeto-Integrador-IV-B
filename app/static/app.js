@@ -112,21 +112,17 @@ function initMap() {
   markersLayer = window.L.layerGroup().addTo(map);
 }
 
-function updateMapMarkers(points) {
+function updateMapMarkers(points, shouldFitBounds = true) {
   if (!map || !markersLayer) return;
   markersLayer.clearLayers();
-  if (routeLine) {
-    map.removeLayer(routeLine);
-    routeLine = null;
-  }
 
   const bounds = [];
   if (userLocation) {
     if (userMarker) map.removeLayer(userMarker);
     userMarker = window.L.circleMarker([userLocation.lat, userLocation.lng], {
-      radius: 8,
+      radius: 9,
       color: "#FFFFFF",
-      weight: 2,
+      weight: 3,
       fillColor: "#B91C1C",
       fillOpacity: 1,
     })
@@ -145,7 +141,7 @@ function updateMapMarkers(points) {
     bounds.push([p.latitude, p.longitude]);
   });
 
-  if (bounds.length > 0) {
+  if (shouldFitBounds && bounds.length > 0 && !selectedPointId) {
     map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
   }
 }
@@ -194,16 +190,16 @@ function selectPoint(pointId, scrollToMap = true) {
         ],
         { color: "#B91C1C", weight: 4, dashArray: "6 6" }
       ).addTo(map);
-      map.fitBounds(routeLine.getBounds(), { padding: [40, 40], maxZoom: 15 });
+      map.fitBounds(routeLine.getBounds(), { padding: [50, 50], maxZoom: 17 });
     }
   } else {
     modalTimesGrid.style.display = "none";
     if (map && hasCoords) {
-      map.setView([point.latitude, point.longitude], 15);
+      map.setView([point.latitude, point.longitude], 16);
     }
   }
 
-  renderPoints();
+  renderPoints(false);
   if (scrollToMap) {
     document.querySelector(".map-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -368,12 +364,12 @@ function getFilteredPoints() {
   });
 }
 
-function renderPoints() {
+function renderPoints(shouldFitBounds = true) {
   const filtered = getFilteredPoints();
   const favs = getFavorites();
 
   resultsCount.textContent = `Exibindo ${filtered.length} de ${currentPoints.length} ponto(s)`;
-  updateMapMarkers(filtered);
+  updateMapMarkers(filtered, shouldFitBounds);
 
   if (filtered.length === 0) {
     pointsContainer.innerHTML = `
@@ -532,8 +528,50 @@ favFilterBtn.addEventListener("click", () => {
 citySelect.addEventListener("change", (e) => {
   if (e.target.value) selectCity(Number(e.target.value));
 });
-searchInput.addEventListener("input", renderPoints);
-vaccineSelect.addEventListener("change", renderPoints);
+searchInput.addEventListener("input", () => renderPoints(true));
+vaccineSelect.addEventListener("change", () => renderPoints(true));
+
+// Barra de acessibilidade (Alto Contraste + Zoom de Texto)
+const contrastBtn = document.getElementById("contrastBtn");
+const fontDecBtn = document.getElementById("fontDecBtn");
+const fontResetBtn = document.getElementById("fontResetBtn");
+const fontIncBtn = document.getElementById("fontIncBtn");
+
+let fontScale = Number(localStorage.getItem("alagoas_font_scale") || 100);
+function applyFontScale() {
+  fontScale = Math.min(130, Math.max(85, fontScale));
+  document.documentElement.style.fontSize = `${fontScale}%`;
+  try {
+    localStorage.setItem("alagoas_font_scale", String(fontScale));
+  } catch {}
+}
+applyFontScale();
+
+if (localStorage.getItem("alagoas_high_contrast") === "1") {
+  document.body.classList.add("high-contrast");
+  contrastBtn?.setAttribute("aria-pressed", "true");
+}
+
+contrastBtn?.addEventListener("click", () => {
+  const active = document.body.classList.toggle("high-contrast");
+  contrastBtn.setAttribute("aria-pressed", active ? "true" : "false");
+  try {
+    localStorage.setItem("alagoas_high_contrast", active ? "1" : "0");
+  } catch {}
+});
+
+fontDecBtn?.addEventListener("click", () => {
+  fontScale -= 10;
+  applyFontScale();
+});
+fontResetBtn?.addEventListener("click", () => {
+  fontScale = 100;
+  applyFontScale();
+});
+fontIncBtn?.addEventListener("click", () => {
+  fontScale += 10;
+  applyFontScale();
+});
 
 initMap();
 loadCities().catch(() => {

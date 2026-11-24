@@ -18,38 +18,52 @@
 <body>
   <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
 
-  <div class="gov-strip">
-    <div class="container gov-strip-inner">
-      <span>ESTADO DE ALAGOAS • SAÚDE PÚBLICA</span>
-      <span>102 municípios • Dados oficiais IBGE &amp; CNES/SUS</span>
-    </div>
-  </div>
-  <div class="flag-stripe" aria-hidden="true"></div>
-
-  <header class="portal-banner">
-    <div class="container">
-      <div class="banner-row">
-        <div class="banner-brand">
-          <img
-            src="/static/bandeira-alagoas.png"
-            alt="Bandeira do Estado de Alagoas"
-            class="flag-img"
-            width="76"
-            height="52"
-          />
-          <div>
-            <span class="brand-kicker">Rede Estadual de Imunização</span>
-            <h1>Portal de Vacinação de Alagoas</h1>
-            <p class="banner-subtitle">Unidades Básicas de Saúde (UBSs) ativas no SUS em todo o estado</p>
-          </div>
+  <div class="sticky-header">
+    <div class="gov-strip">
+      <div class="container gov-strip-inner">
+        <span>ESTADO DE ALAGOAS • SAÚDE PÚBLICA (102 municípios)</span>
+        <div class="a11y-toolbar" role="group" aria-label="Ferramentas de acessibilidade">
+          <button id="contrastBtn" class="a11y-btn" type="button" aria-pressed="false" title="Alternar alto contraste">
+            Alto Contraste
+          </button>
+          <button id="fontDecBtn" class="a11y-btn" type="button" title="Diminuir tamanho do texto" aria-label="Diminuir texto">
+            A-
+          </button>
+          <button id="fontResetBtn" class="a11y-btn" type="button" title="Restaurar tamanho do texto" aria-label="Tamanho padrão do texto">
+            A
+          </button>
+          <button id="fontIncBtn" class="a11y-btn" type="button" title="Aumentar tamanho do texto" aria-label="Aumentar texto">
+            A+
+          </button>
         </div>
-        <nav class="nav-actions" aria-label="Navegação principal">
-          <a class="btn btn-outline" href="/docs">Documentação API</a>
-          <a class="btn btn-primary" href="/admin">Painel Admin</a>
-        </nav>
       </div>
     </div>
-  </header>
+    <div class="flag-stripe" aria-hidden="true"></div>
+
+    <header class="portal-banner">
+      <div class="container">
+        <div class="banner-row">
+          <div class="banner-brand">
+            <img
+              src="/static/bandeira-alagoas.png"
+              alt="Bandeira do Estado de Alagoas"
+              class="flag-img"
+              width="76"
+              height="52"
+            />
+            <div>
+              <span class="brand-kicker">Rede Estadual de Imunização</span>
+              <h1>Portal de Vacinação de Alagoas</h1>
+              <p class="banner-subtitle">Unidades Básicas de Saúde (UBSs) ativas no SUS em todo o estado</p>
+            </div>
+          </div>
+          <nav class="nav-actions" aria-label="Navegação principal">
+            <a class="btn btn-primary" href="/admin">Painel Admin</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+  </div>
 
   <main id="conteudo-principal" class="container main-content">
     <section class="intro-card" aria-labelledby="intro-titulo">
@@ -174,11 +188,29 @@
     </section>
 
     <section id="pointsContainer" class="cards-grid" aria-live="polite"></section>
-
-    <footer class="footer-note">
-      Fontes: IBGE (municípios) e CNES / Ministério da Saúde (UBSs ativas SUS). A lista de vacinas utiliza o calendário básico do PNI como referência informativa, podendo ser atualizada pelo painel administrativo.
-    </footer>
   </main>
+
+  <footer class="footer-portal">
+    <div class="container footer-grid">
+      <div>
+        <strong>Portal de Vacinação de Alagoas</strong>
+        <p>
+          Fontes: IBGE (municípios) e CNES / Ministério da Saúde (UBSs ativas SUS). A lista de vacinas utiliza o calendário básico do PNI como referência informativa, podendo ser atualizada pelo painel administrativo.
+        </p>
+      </div>
+      <div class="footer-links">
+        <a
+          class="btn btn-light btn-sm"
+          href="/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Documentação da API (nova aba)
+        </a>
+        <a class="btn btn-light btn-sm" href="/admin">Painel Admin</a>
+      </div>
+    </div>
+  </footer>
 
   <div id="portalToast" class="toast" role="status" aria-live="polite"></div>
 
