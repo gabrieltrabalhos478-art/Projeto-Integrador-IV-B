@@ -1056,6 +1056,7 @@ body.high-contrast .step-badge {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface-muted);
+  touch-action: none;
   z-index: 1;
 }
 
