@@ -192,9 +192,12 @@ function selectPoint(pointId, scrollToMap = true) {
   const hasCoords = point.latitude != null && point.longitude != null;
   if (hasCoords) {
     const dest = `${point.latitude},${point.longitude}`;
-    const originParam = userLocation
-      ? `&origin=${userLocation.lat},${userLocation.lng}`
-      : "";
+    // Só fixa origin no Google Maps quando o usuário informou um CEP/endereço manualmente;
+    // caso contrário, deixa o próprio Google Maps usar "Seu local" em tempo real.
+    const originParam =
+      userLocation && userLocation.fromAddress
+        ? `&origin=${userLocation.lat},${userLocation.lng}`
+        : "";
     googleMapsLink.href = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${dest}`;
     googleMapsLink.style.display = "inline-flex";
   } else {
@@ -670,7 +673,7 @@ async function locateByQuery() {
       showToast("Endereço não encontrado.", true);
       return;
     }
-    userLocation = { lat: Number(found.lat), lng: Number(found.lon) };
+    userLocation = { lat: Number(found.lat), lng: Number(found.lon), fromAddress: true };
     const shortLabel = found.display_name.split(",").slice(0, 2).join(",");
     sortSelect.value = "distance";
     collapseGeoStep(`Localização definida: ${shortLabel}`);

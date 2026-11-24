@@ -411,7 +411,28 @@ body.high-contrast .footer-portal {
   margin: 0;
   font-size: 0.9375rem;
   color: var(--text-muted);
-  max-width: 75ch;
+}
+
+.intro-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.intro-step-item {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.intro-step-item strong {
+  display: block;
+  color: var(--al-blue-dark);
+  margin-bottom: 2px;
 }
 
 .panel {
