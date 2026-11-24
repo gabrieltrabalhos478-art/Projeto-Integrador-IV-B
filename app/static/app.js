@@ -546,7 +546,7 @@ async function locateByQuery() {
 
   geoStatus.textContent = "Buscando endereço em Alagoas...";
   const digits = raw.replace(/\D/g, "");
-  let queryText = `${raw}, Alagoas, Brasil`;
+  const candidates = [];
 
   if (digits.length === 8) {
     try {
@@ -564,32 +564,52 @@ async function locateByQuery() {
         if (matchedCity && matchedCity.id !== Number(citySelect.value)) {
           await selectCity(matchedCity.id);
         }
-        queryText = [viaData.logradouro, viaData.bairro, viaData.localidade, "Alagoas, Brasil"]
-          .filter(Boolean)
-          .join(", ");
+        if (viaData.logradouro) {
+          candidates.push(
+            [viaData.logradouro, viaData.bairro, viaData.localidade, "Alagoas, Brasil"]
+              .filter(Boolean)
+              .join(", ")
+          );
+        }
+        if (viaData.bairro) {
+          candidates.push(`${viaData.bairro}, ${viaData.localidade}, Alagoas, Brasil`);
+        }
+        candidates.push(`${viaData.localidade}, Alagoas, Brasil`);
       }
     } catch {
       // Fallback para busca direta no Nominatim
     }
   }
 
+  if (candidates.length === 0) {
+    candidates.push(`${raw}, Alagoas, Brasil`);
+  }
+
   try {
-    const nomRes = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(queryText)}`
-    );
-    const nomData = await nomRes.json();
-    if (!nomData || nomData.length === 0) {
-      geoStatus.textContent = "Endereço não encontrado. Tente informar rua + cidade ou outro CEP.";
+    let found = null;
+    for (const q of candidates) {
+      const nomRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`
+      );
+      const nomData = await nomRes.json();
+      if (nomData && nomData.length > 0) {
+        found = nomData[0];
+        break;
+      }
+    }
+
+    if (!found) {
+      geoStatus.textContent = "Endereço não encontrado. Tente clicar direto no mapa ou informar bairro + cidade.";
       showToast("Endereço não encontrado.", true);
       return;
     }
 
     userLocation = {
-      lat: Number(nomData[0].lat),
-      lng: Number(nomData[0].lon),
+      lat: Number(found.lat),
+      lng: Number(found.lon),
     };
     selectedPointId = null;
-    geoStatus.textContent = `Localização definida por endereço (${nomData[0].display_name.split(",").slice(0, 2).join(",")}).`;
+    geoStatus.textContent = `Localização definida (${found.display_name.split(",").slice(0, 2).join(",")}).`;
     updateNearestAndRender();
     showToast("Endereço localizado! Posto mais próximo destacado.");
   } catch {
