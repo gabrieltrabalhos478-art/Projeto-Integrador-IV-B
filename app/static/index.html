@@ -119,14 +119,28 @@
               <option value="">Carregando municípios...</option>
             </select>
           </div>
+          <div class="field" id="neighborhoodField">
+            <label for="neighborhoodSelect">Bairro</label>
+            <select id="neighborhoodSelect">
+              <option value="">Todos os bairros</option>
+            </select>
+          </div>
           <div class="field">
-            <label for="searchInput">Buscar UBS ou bairro</label>
-            <input id="searchInput" type="search" placeholder="Ex.: Jacintinho, UBS, Centro..." />
+            <label for="searchInput">Buscar UBS ou endereço</label>
+            <input id="searchInput" type="search" placeholder="Ex.: UBS, PSF, rua..." />
           </div>
           <div class="field">
             <label for="vaccineSelect">Filtrar por vacina</label>
             <select id="vaccineSelect">
               <option value="">Todas as vacinas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sortSelect">Organizar lista</label>
+            <select id="sortSelect">
+              <option value="neighborhood">Agrupar por Bairro (A–Z)</option>
+              <option value="name">Ordem alfabética (A–Z)</option>
+              <option value="distance">Mais próximos primeiro</option>
             </select>
           </div>
         </div>
@@ -166,9 +180,14 @@
     <section class="map-section" aria-label="Mapa e estimativa de tempo por modal">
       <div class="map-header">
         <h2>Mapa de Pontos de Vacinação</h2>
-        <a class="btn btn-outline btn-sm" href="#pointsContainer">
-          Pular mapa para a lista acessível
-        </a>
+        <div class="map-actions">
+          <button id="focusPointBtn" class="btn btn-outline btn-sm" type="button" style="display: none;">
+            Focar no posto selecionado
+          </button>
+          <a class="btn btn-outline btn-sm" href="#pointsContainer">
+            Pular mapa para a lista acessível
+          </a>
+        </div>
       </div>
       <div class="map-layout">
         <div

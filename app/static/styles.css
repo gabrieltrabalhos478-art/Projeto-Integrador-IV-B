@@ -425,14 +425,34 @@ body.high-contrast .footer-portal {
 
 .filters-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1.2fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 14px;
 }
 
-@media (max-width: 820px) {
-  .filters-grid {
-    grid-template-columns: 1fr;
-  }
+.neighborhood-group {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border-left: 4px solid var(--al-blue);
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--al-blue-dark);
+}
+
+body.high-contrast .neighborhood-group {
+  border-left-color: #FACC15;
+  border: 1px solid #FFFFFF;
+}
+
+.map-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .field label {

@@ -1,6 +1,9 @@
 const citySelect = document.getElementById("citySelect");
+const neighborhoodSelect = document.getElementById("neighborhoodSelect");
+const sortSelect = document.getElementById("sortSelect");
 const searchInput = document.getElementById("searchInput");
 const vaccineSelect = document.getElementById("vaccineSelect");
+const focusPointBtn = document.getElementById("focusPointBtn");
 const quickCitiesEl = document.getElementById("quickCities");
 const cityBanner = document.getElementById("cityBanner");
 const cityTitle = document.getElementById("cityTitle");
@@ -144,10 +147,32 @@ function updateMapMarkers(points, shouldFitBounds = true) {
 
   points.forEach((p) => {
     if (p.latitude == null || p.longitude == null) return;
-    const marker = window.L.marker([p.latitude, p.longitude]).addTo(markersLayer);
-    marker.bindPopup(
-      `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`
-    );
+    const isSelected = p.id === selectedPointId;
+    let marker;
+    if (isSelected) {
+      marker = window.L.circleMarker([p.latitude, p.longitude], {
+        radius: 11,
+        color: "#FFFFFF",
+        weight: 3,
+        fillColor: "#004A99",
+        fillOpacity: 1,
+      }).addTo(markersLayer);
+      marker.bindPopup(
+        `<strong>Posto selecionado: ${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`
+      );
+      marker.openPopup();
+    } else {
+      marker = window.L.circleMarker([p.latitude, p.longitude], {
+        radius: 6,
+        color: "#003875",
+        weight: 1.5,
+        fillColor: "#38BDF8",
+        fillOpacity: 0.85,
+      }).addTo(markersLayer);
+      marker.bindPopup(
+        `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`
+      );
+    }
     marker.on("click", () => selectPoint(p.id, false));
     bounds.push([p.latitude, p.longitude]);
   });
@@ -162,6 +187,9 @@ function selectPoint(pointId, scrollToMap = true) {
   if (!point) return;
 
   selectedPointId = pointId;
+  if (focusPointBtn) {
+    focusPointBtn.style.display = "inline-flex";
+  }
   routePointName.textContent = point.name;
   routePointAddress.textContent = [point.address, point.neighborhood]
     .filter(Boolean)
@@ -276,7 +304,25 @@ async function selectCity(cityId) {
   cityMeta.textContent = `Código IBGE: ${currentCityDetail.ibge_code} • ${currentCityDetail.vaccination_points_count} ponto(s) cadastrado(s)`;
 
   populateVaccineFilter(currentPoints);
+  populateNeighborhoodFilter(currentPoints);
   updateNearestAndRender();
+}
+
+function populateNeighborhoodFilter(points) {
+  if (!neighborhoodSelect) return;
+  const previous = neighborhoodSelect.value;
+  const neighborhoods = new Set();
+  points.forEach((p) => {
+    const n = (p.neighborhood || "").trim();
+    if (n) neighborhoods.add(n);
+  });
+  const sorted = Array.from(neighborhoods).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  neighborhoodSelect.innerHTML =
+    `<option value="">Todos os bairros (${sorted.length})</option>` +
+    sorted.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  if (sorted.includes(previous)) {
+    neighborhoodSelect.value = previous;
+  }
 }
 
 function populateVaccineFilter(points) {
@@ -360,9 +406,10 @@ function renderVaccinesBlock(vaccines) {
 function getFilteredPoints() {
   const query = searchInput.value.trim().toLowerCase();
   const vaccineFilter = vaccineSelect.value;
+  const neighborhoodFilter = neighborhoodSelect ? neighborhoodSelect.value : "";
   const favs = getFavorites();
 
-  return currentPoints.filter((point) => {
+  const filtered = currentPoints.filter((point) => {
     const matchesText =
       !query ||
       (point.name || "").toLowerCase().includes(query) ||
@@ -370,9 +417,83 @@ function getFilteredPoints() {
       (point.address || "").toLowerCase().includes(query);
     const matchesVaccine =
       !vaccineFilter || (point.vaccines || []).includes(vaccineFilter);
+    const matchesNeighborhood =
+      !neighborhoodFilter || (point.neighborhood || "").trim() === neighborhoodFilter;
     const matchesFav = !onlyFavorites || favs.has(point.id);
-    return matchesText && matchesVaccine && matchesFav;
+    return matchesText && matchesVaccine && matchesNeighborhood && matchesFav;
   });
+
+  const sortMode = userLocation && sortSelect?.value === "neighborhood"
+    ? "distance"
+    : (sortSelect?.value || "neighborhood");
+
+  filtered.sort((a, b) => {
+    if (sortMode === "distance") {
+      if (a._distanceKm == null && b._distanceKm == null) return a.name.localeCompare(b.name, "pt-BR");
+      if (a._distanceKm == null) return 1;
+      if (b._distanceKm == null) return -1;
+      return a._distanceKm - b._distanceKm;
+    }
+    if (sortMode === "neighborhood") {
+      const na = (a.neighborhood || "Sem bairro informado").trim();
+      const nb = (b.neighborhood || "Sem bairro informado").trim();
+      const cmp = na.localeCompare(nb, "pt-BR");
+      return cmp !== 0 ? cmp : a.name.localeCompare(b.name, "pt-BR");
+    }
+    return a.name.localeCompare(b.name, "pt-BR");
+  });
+
+  return filtered;
+}
+
+function renderCardHtml(p, favs) {
+  const isFav = favs.has(p.id);
+  const isSelected = p.id === selectedPointId;
+  const distBadge =
+    p._distanceKm != null
+      ? `<span class="card-distance">${formatDistance(p._distanceKm)} • A pé ${formatDurationMinutes(p._distanceKm, 5)} • Carro ${formatDurationMinutes(p._distanceKm, 35)}</span>`
+      : "";
+
+  return `
+    <article class="card${isSelected ? " card-selected" : ""}">
+      <div class="card-header">
+        <h3 class="card-title">${escapeHtml(p.name)}</h3>
+        ${p.neighborhood ? `<span class="pill">${escapeHtml(p.neighborhood)}</span>` : ""}
+      </div>
+      ${distBadge}
+      <p class="info-line"><strong>Endereço:</strong> ${escapeHtml(p.address || "Não informado")}</p>
+      <p class="info-line"><strong>Telefone:</strong> ${escapeHtml(p.phone || "Não informado")}</p>
+      <p class="info-line"><strong>Horário:</strong> ${escapeHtml(p.opening_hours || "Não informado")}</p>
+      ${renderVaccinesBlock(p.vaccines)}
+      <div class="card-actions">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-action="map"
+          data-id="${p.id}"
+        >
+          Ver no mapa / Rota
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline btn-sm btn-fav"
+          data-action="fav"
+          data-id="${p.id}"
+          aria-pressed="${isFav ? "true" : "false"}"
+        >
+          ${isFav ? "Favoritado" : "Favoritar"}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline btn-sm"
+          data-action="share"
+          data-id="${p.id}"
+        >
+          Compartilhar
+        </button>
+      </div>
+    </article>
+  `;
 }
 
 function renderPoints(shouldFitBounds = true) {
@@ -391,57 +512,33 @@ function renderPoints(shouldFitBounds = true) {
     return;
   }
 
-  pointsContainer.innerHTML = filtered
-    .map((p) => {
-      const isFav = favs.has(p.id);
-      const isSelected = p.id === selectedPointId;
-      const distBadge =
-        p._distanceKm != null
-          ? `<span class="card-distance">${formatDistance(p._distanceKm)} • A pé ${formatDurationMinutes(p._distanceKm, 5)} • Carro ${formatDurationMinutes(p._distanceKm, 35)}</span>`
-          : "";
+  const groupByNeighborhood =
+    !(userLocation && sortSelect?.value === "neighborhood") &&
+    (sortSelect?.value || "neighborhood") === "neighborhood";
 
-      return `
-        <article class="card${isSelected ? " card-selected" : ""}">
-          <div class="card-header">
-            <h3 class="card-title">${escapeHtml(p.name)}</h3>
-            ${p.neighborhood ? `<span class="pill">${escapeHtml(p.neighborhood)}</span>` : ""}
-          </div>
-          ${distBadge}
-          <p class="info-line"><strong>Endereço:</strong> ${escapeHtml(p.address || "Não informado")}</p>
-          <p class="info-line"><strong>Telefone:</strong> ${escapeHtml(p.phone || "Não informado")}</p>
-          <p class="info-line"><strong>Horário:</strong> ${escapeHtml(p.opening_hours || "Não informado")}</p>
-          ${renderVaccinesBlock(p.vaccines)}
-          <div class="card-actions">
-            <button
-              type="button"
-              class="btn btn-primary btn-sm"
-              data-action="map"
-              data-id="${p.id}"
-            >
-              Ver no mapa / Rota
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline btn-sm btn-fav"
-              data-action="fav"
-              data-id="${p.id}"
-              aria-pressed="${isFav ? "true" : "false"}"
-            >
-              ${isFav ? "Favoritado" : "Favoritar"}
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline btn-sm"
-              data-action="share"
-              data-id="${p.id}"
-            >
-              Compartilhar
-            </button>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+  if (!groupByNeighborhood) {
+    pointsContainer.innerHTML = filtered.map((p) => renderCardHtml(p, favs)).join("");
+    return;
+  }
+
+  const groups = new Map();
+  filtered.forEach((p) => {
+    const key = (p.neighborhood || "Sem bairro informado").trim();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(p);
+  });
+
+  let html = "";
+  groups.forEach((items, neighborhood) => {
+    html += `
+      <div class="neighborhood-group">
+        <span>Bairro: ${escapeHtml(neighborhood)}</span>
+        <span>${items.length} unidade(s)</span>
+      </div>
+    `;
+    html += items.map((p) => renderCardHtml(p, favs)).join("");
+  });
+  pointsContainer.innerHTML = html;
 }
 
 pointsContainer.addEventListener("click", async (e) => {
@@ -703,7 +800,25 @@ async function loadStatewidePoints() {
   cityMeta.textContent = `102 municípios • ${currentPoints.length} UBSs ativas no SUS`;
 
   populateVaccineFilter(currentPoints);
+  populateNeighborhoodFilter(currentPoints);
   updateNearestAndRender();
+}
+
+function populateNeighborhoodFilter(points) {
+  if (!neighborhoodSelect) return;
+  const previous = neighborhoodSelect.value;
+  const neighborhoods = new Set();
+  points.forEach((p) => {
+    const n = (p.neighborhood || "").trim();
+    if (n) neighborhoods.add(n);
+  });
+  const sorted = Array.from(neighborhoods).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  neighborhoodSelect.innerHTML =
+    `<option value="">Todos os bairros (${sorted.length})</option>` +
+    sorted.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  if (sorted.includes(previous)) {
+    neighborhoodSelect.value = previous;
+  }
 }
 
 modeAutoBtn?.addEventListener("click", () => setSearchMode("auto"));
@@ -715,6 +830,14 @@ citySelect.addEventListener("change", (e) => {
 });
 searchInput.addEventListener("input", () => renderPoints(true));
 vaccineSelect.addEventListener("change", () => renderPoints(true));
+neighborhoodSelect?.addEventListener("change", () => {
+  selectedPointId = null;
+  renderPoints(true);
+});
+sortSelect?.addEventListener("change", () => renderPoints(false));
+focusPointBtn?.addEventListener("click", () => {
+  if (selectedPointId) selectPoint(selectedPointId, true);
+});
 
 // Barra de acessibilidade (Alto Contraste + Zoom de Texto)
 const contrastBtn = document.getElementById("contrastBtn");
