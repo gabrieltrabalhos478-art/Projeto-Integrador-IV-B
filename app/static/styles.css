@@ -699,6 +699,41 @@ body.high-contrast .step-badge {
   color: #000000;
 }
 
+.geo-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirm-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.fav-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fav-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--al-blue);
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

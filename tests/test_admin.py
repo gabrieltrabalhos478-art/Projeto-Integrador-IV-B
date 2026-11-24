@@ -12,6 +12,11 @@ def test_portal_and_admin_pages_load(client: TestClient) -> None:
     assert "text/html" in admin.headers["content-type"]
     assert "Gerenciar Pontos de Vacinação" in admin.text
 
+    statewide = client.get("/api/portal/vaccination-points")
+    assert statewide.status_code == 200
+    assert len(statewide.json()) == 2
+    assert statewide.json()[0]["city_name"] == "Maceió"
+
 
 def test_admin_login_and_crud_flow(client: TestClient) -> None:
     # Sem token -> 401

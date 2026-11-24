@@ -26,6 +26,29 @@ def list_by_city_id(conn: DBConnection, city_id: int) -> list[Any]:
     )
 
 
+def list_all_with_city(conn: DBConnection) -> list[Any]:
+    """Return all vaccination points joined with their municipality name."""
+    return conn.fetchall(
+        """
+        SELECT
+          vp.id,
+          vp.city_id,
+          c.name AS city_name,
+          vp.name,
+          vp.address,
+          vp.neighborhood,
+          vp.phone,
+          vp.opening_hours,
+          vp.vaccines,
+          vp.latitude,
+          vp.longitude
+        FROM vaccination_points vp
+        JOIN cities c ON c.id = vp.city_id
+        ORDER BY c.name ASC, vp.neighborhood ASC, vp.name ASC
+        """
+    )
+
+
 def get_by_id(conn: DBConnection, point_id: int) -> Any:
     """Return a single vaccination point by id or None."""
     return conn.fetchone(

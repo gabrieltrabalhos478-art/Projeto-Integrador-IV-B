@@ -1,23 +1,38 @@
+const geoExpanded = document.getElementById("geoExpanded");
+const geoCompact = document.getElementById("geoCompact");
+const geoSummaryText = document.getElementById("geoSummaryText");
+const geoBtn = document.getElementById("geoBtn");
+const skipGeoBtn = document.getElementById("skipGeoBtn");
+const changeGeoBtn = document.getElementById("changeGeoBtn");
+const cepInput = document.getElementById("cepInput");
+const cepBtn = document.getElementById("cepBtn");
+const geoStatus = document.getElementById("geoStatus");
+
+const modeMunicipalBtn = document.getElementById("modeMunicipalBtn");
+const modeStateBtn = document.getElementById("modeStateBtn");
+const cityField = document.getElementById("cityField");
+const neighborhoodField = document.getElementById("neighborhoodField");
 const citySelect = document.getElementById("citySelect");
 const neighborhoodSelect = document.getElementById("neighborhoodSelect");
-const sortSelect = document.getElementById("sortSelect");
+const searchLabel = document.getElementById("searchLabel");
 const searchInput = document.getElementById("searchInput");
 const vaccineSelect = document.getElementById("vaccineSelect");
-const focusPointBtn = document.getElementById("focusPointBtn");
+const sortSelect = document.getElementById("sortSelect");
 const quickCitiesEl = document.getElementById("quickCities");
+const favOnlyCheck = document.getElementById("favOnlyCheck");
+const favCountEl = document.getElementById("favCount");
+const confirmSearchBtn = document.getElementById("confirmSearchBtn");
+
+const resultsSection = document.getElementById("resultsSection");
+const nearestSection = document.getElementById("nearestSection");
+const nearestTitle = document.getElementById("nearestTitle");
+const nearestBody = document.getElementById("nearestBody");
+const focusPointBtn = document.getElementById("focusPointBtn");
 const cityBanner = document.getElementById("cityBanner");
 const cityTitle = document.getElementById("cityTitle");
 const cityMeta = document.getElementById("cityMeta");
 const resultsCount = document.getElementById("resultsCount");
 const pointsContainer = document.getElementById("pointsContainer");
-
-const geoBtn = document.getElementById("geoBtn");
-const geoStatus = document.getElementById("geoStatus");
-const favFilterBtn = document.getElementById("favFilterBtn");
-const favCountEl = document.getElementById("favCount");
-const nearestSection = document.getElementById("nearestSection");
-const nearestTitle = document.getElementById("nearestTitle");
-const nearestBody = document.getElementById("nearestBody");
 
 const routePointName = document.getElementById("routePointName");
 const routePointAddress = document.getElementById("routePointAddress");
@@ -32,13 +47,14 @@ const portalToast = document.getElementById("portalToast");
 const FEATURED_CITIES = ["Maceió", "Arapiraca", "Rio Largo", "Palmeira dos Índios", "Penedo"];
 const VISIBLE_VACCINES_LIMIT = 4;
 const FAVORITES_KEY = "alagoas_vacina_favorites";
+const GEO_DONE_KEY = "alagoas_geo_done";
 
 let allCities = [];
+let searchScope = "municipal"; // "municipal" | "state"
 let currentCityDetail = null;
 let currentPoints = [];
-let userLocation = null; // { lat, lng }
+let userLocation = null; // { lat, lng, label }
 let selectedPointId = null;
-let onlyFavorites = false;
 
 let map = null;
 let markersLayer = null;
@@ -69,10 +85,22 @@ function getFavorites() {
 function saveFavorites(favSet) {
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(favSet)));
-  } catch {
-    // Ignore storage quota errors
-  }
+  } catch {}
   favCountEl.textContent = String(favSet.size);
+}
+
+function collapseGeoStep(summary) {
+  geoExpanded.style.display = "none";
+  geoCompact.style.display = "flex";
+  geoSummaryText.textContent = summary;
+  try {
+    localStorage.setItem(GEO_DONE_KEY, "1");
+  } catch {}
+}
+
+function expandGeoStep() {
+  geoExpanded.style.display = "block";
+  geoCompact.style.display = "none";
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -111,17 +139,6 @@ function initMap() {
     maxZoom: 19,
   }).addTo(map);
   markersLayer = window.L.layerGroup().addTo(map);
-
-  map.on("click", (e) => {
-    userLocation = {
-      lat: e.latlng.lat,
-      lng: e.latlng.lng,
-    };
-    selectedPointId = null;
-    geoStatus.textContent = "Localização marcada manualmente no mapa — postos ordenados do mais próximo.";
-    updateNearestAndRender();
-    showToast("Posição marcada no mapa! Posto mais próximo atualizado.");
-  });
 }
 
 function updateMapMarkers(points, shouldFitBounds = true) {
@@ -132,42 +149,30 @@ function updateMapMarkers(points, shouldFitBounds = true) {
   points.forEach((p) => {
     if (p.latitude == null || p.longitude == null) return;
     const isSelected = p.id === selectedPointId;
-    let marker;
+    const marker = window.L.circleMarker([p.latitude, p.longitude], {
+      radius: isSelected ? 11 : 6,
+      color: isSelected ? "#FFFFFF" : "#003875",
+      weight: isSelected ? 3 : 1.5,
+      fillColor: isSelected ? "#004A99" : "#38BDF8",
+      fillOpacity: isSelected ? 1 : 0.85,
+    }).addTo(markersLayer);
+
+    const labelPrefix = isSelected ? "Posto selecionado: " : "";
+    marker.bindPopup(
+      `<strong>${labelPrefix}${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`,
+      { autoPan: false }
+    );
     if (isSelected) {
-      marker = window.L.circleMarker([p.latitude, p.longitude], {
-        radius: 11,
-        color: "#FFFFFF",
-        weight: 3,
-        fillColor: "#004A99",
-        fillOpacity: 1,
-      }).addTo(markersLayer);
-      marker.bindPopup(
-        `<strong>Posto selecionado: ${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`,
-        { autoPan: false }
-      );
       marker.openPopup();
-    } else {
-      marker = window.L.circleMarker([p.latitude, p.longitude], {
-        radius: 6,
-        color: "#003875",
-        weight: 1.5,
-        fillColor: "#38BDF8",
-        fillOpacity: 0.85,
-      }).addTo(markersLayer);
-      marker.bindPopup(
-        `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`,
-        { autoPan: false }
-      );
     }
     marker.on("click", () => selectPoint(p.id, false));
-    // Evitar que coordenadas fora do continente (ex.: erro de cadastro CNES no mar) puxem o zoom geral
     if (p.longitude < -35.0) {
       bounds.push([p.latitude, p.longitude]);
     }
   });
 
   if (shouldFitBounds && bounds.length > 0 && !selectedPointId) {
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
   }
 }
 
@@ -180,9 +185,9 @@ function selectPoint(pointId, scrollToMap = true) {
     focusPointBtn.style.display = "inline-flex";
   }
   routePointName.textContent = point.name;
-  routePointAddress.textContent = [point.address, point.neighborhood]
-    .filter(Boolean)
-    .join(" — ") || "Endereço não informado";
+  routePointAddress.textContent =
+    [point.address, point.neighborhood, point.city_name].filter(Boolean).join(" — ") ||
+    "Endereço não informado";
 
   const hasCoords = point.latitude != null && point.longitude != null;
   if (hasCoords) {
@@ -221,72 +226,20 @@ function selectPoint(pointId, scrollToMap = true) {
   }
 }
 
-async function loadCities() {
-  saveFavorites(getFavorites());
-  const res = await fetch("/cities");
-  allCities = await res.json();
-
-  citySelect.innerHTML = allCities
-    .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
-    .join("");
-
-  FEATURED_CITIES.forEach((name) => {
-    const city = allCities.find((c) => c.name === name);
-    if (!city) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "chip";
-    btn.dataset.cityId = String(city.id);
-    btn.textContent = city.name;
-    btn.addEventListener("click", () => selectCity(city.id));
-    quickCitiesEl.appendChild(btn);
-  });
-
-  const params = new URLSearchParams(window.location.search);
-  const paramCity = Number(params.get("city"));
-  const paramPoint = Number(params.get("point"));
-
-  const initialCity =
-    allCities.find((c) => c.id === paramCity) ||
-    allCities.find((c) => c.name === "Maceió") ||
-    allCities[0];
-
-  if (initialCity) {
-    await selectCity(initialCity.id);
-    if (paramPoint) {
-      selectPoint(paramPoint, false);
-    }
+function populateVaccineFilter(points) {
+  const previous = vaccineSelect.value;
+  const vaccines = new Set();
+  points.forEach((p) => (p.vaccines || []).forEach((v) => vaccines.add(v)));
+  const sorted = Array.from(vaccines).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  vaccineSelect.innerHTML =
+    `<option value="">Todas as vacinas</option>` +
+    sorted.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+  if (sorted.includes(previous)) {
+    vaccineSelect.value = previous;
   }
 }
 
-async function selectCity(cityId) {
-  citySelect.value = String(cityId);
-  selectedPointId = null;
-  document.querySelectorAll(".chip").forEach((chip) => {
-    chip.classList.toggle("active", chip.dataset.cityId === String(cityId));
-  });
-
-  pointsContainer.innerHTML = `<div class="empty-state">Carregando pontos de vacinação...</div>`;
-
-  const [detailRes, pointsRes] = await Promise.all([
-    fetch(`/cities/${cityId}`),
-    fetch(`/vaccination-points/${cityId}`),
-  ]);
-
-  currentCityDetail = await detailRes.json();
-  currentPoints = await pointsRes.json();
-
-  cityBanner.style.display = "flex";
-  cityTitle.textContent = `${currentCityDetail.name} — ${currentCityDetail.state}`;
-  cityMeta.textContent = `Código IBGE: ${currentCityDetail.ibge_code} • ${currentCityDetail.vaccination_points_count} ponto(s) cadastrado(s)`;
-
-  populateVaccineFilter(currentPoints);
-  populateNeighborhoodFilter(currentPoints);
-  updateNearestAndRender();
-}
-
 function populateNeighborhoodFilter(points) {
-  if (!neighborhoodSelect) return;
   const previous = neighborhoodSelect.value;
   const neighborhoods = new Set();
   points.forEach((p) => {
@@ -302,22 +255,57 @@ function populateNeighborhoodFilter(points) {
   }
 }
 
-function populateVaccineFilter(points) {
-  const previous = vaccineSelect.value;
-  const vaccines = new Set();
-  points.forEach((p) => (p.vaccines || []).forEach((v) => vaccines.add(v)));
+async function prepareCityFilters(cityId) {
+  const [detailRes, pointsRes] = await Promise.all([
+    fetch(`/cities/${cityId}`),
+    fetch(`/vaccination-points/${cityId}`),
+  ]);
+  currentCityDetail = await detailRes.json();
+  currentPoints = await pointsRes.json();
+  populateVaccineFilter(currentPoints);
+  populateNeighborhoodFilter(currentPoints);
+}
 
-  const sorted = Array.from(vaccines).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  vaccineSelect.innerHTML =
-    `<option value="">Todas as vacinas</option>` +
-    sorted.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+async function prepareStatewideFilters() {
+  const res = await fetch("/api/portal/vaccination-points");
+  currentPoints = await res.json();
+  currentCityDetail = {
+    name: "Todo o Estado",
+    state: "AL",
+    ibge_code: "UF 27",
+    vaccination_points_count: currentPoints.length,
+  };
+  populateVaccineFilter(currentPoints);
+}
 
-  if (sorted.includes(previous)) {
-    vaccineSelect.value = previous;
+async function setScope(scope) {
+  searchScope = scope;
+  modeMunicipalBtn.setAttribute("aria-pressed", scope === "municipal" ? "true" : "false");
+  modeStateBtn.setAttribute("aria-pressed", scope === "state" ? "true" : "false");
+
+  const groupOption = sortSelect.querySelector('option[value="group"]');
+  if (scope === "municipal") {
+    cityField.style.display = "block";
+    neighborhoodField.style.display = "block";
+    quickCitiesEl.style.display = "flex";
+    searchLabel.textContent = "Buscar UBS ou endereço";
+    searchInput.placeholder = "Ex.: UBS, PSF, rua...";
+    groupOption.textContent = "Agrupar por Bairro (A–Z)";
+    if (citySelect.value) {
+      await prepareCityFilters(Number(citySelect.value));
+    }
+  } else {
+    cityField.style.display = "none";
+    neighborhoodField.style.display = "none";
+    quickCitiesEl.style.display = "none";
+    searchLabel.textContent = "Buscar UBS, cidade ou endereço";
+    searchInput.placeholder = "Ex.: Arapiraca, Penedo, UBS...";
+    groupOption.textContent = "Agrupar por Município (A–Z)";
+    await prepareStatewideFilters();
   }
 }
 
-function updateNearestAndRender() {
+function applyDistancesAndNearest(autoSelectNearest = false) {
   if (userLocation) {
     currentPoints = currentPoints.map((p) => ({
       ...p,
@@ -326,19 +314,21 @@ function updateNearestAndRender() {
           ? haversineKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude)
           : null,
     }));
-    currentPoints.sort((a, b) => {
-      if (a._distanceKm == null && b._distanceKm == null) return a.id - b.id;
-      if (a._distanceKm == null) return 1;
-      if (b._distanceKm == null) return -1;
-      return a._distanceKm - b._distanceKm;
-    });
+  } else {
+    currentPoints = currentPoints.map((p) => ({ ...p, _distanceKm: null }));
+  }
 
-    const nearest = currentPoints.find((p) => p._distanceKm != null);
+  const filtered = getFilteredPoints();
+  if (userLocation && filtered.length > 0) {
+    const withDist = filtered
+      .filter((p) => p._distanceKm != null)
+      .sort((a, b) => a._distanceKm - b._distanceKm);
+    const nearest = withDist[0];
     if (nearest) {
       nearestSection.style.display = "block";
-      nearestTitle.textContent = `Posto mais próximo em ${currentCityDetail?.name || "Alagoas"}: ${nearest.name}`;
+      nearestTitle.textContent = `Posto mais próximo: ${nearest.name}${nearest.city_name ? ` (${nearest.city_name})` : ""}`;
       nearestBody.textContent = `${formatDistance(nearest._distanceKm)} de distância • A pé: ${formatDurationMinutes(nearest._distanceKm, 5)} • Carro: ${formatDurationMinutes(nearest._distanceKm, 35)} • Bicicleta: ${formatDurationMinutes(nearest._distanceKm, 15)}.`;
-      if (!selectedPointId) {
+      if (autoSelectNearest && !selectedPointId) {
         selectPoint(nearest.id, false);
         return;
       }
@@ -349,14 +339,82 @@ function updateNearestAndRender() {
     nearestSection.style.display = "none";
   }
 
-  renderPoints();
+  renderPoints(true);
+}
+
+async function showResults(autoSelectNearest = true) {
+  resultsSection.style.display = "block";
+  if (map) {
+    map.invalidateSize();
+  }
+
+  cityBanner.style.display = "flex";
+  if (searchScope === "municipal" && currentCityDetail) {
+    cityTitle.textContent = `${currentCityDetail.name} — ${currentCityDetail.state}`;
+    cityMeta.textContent = `Código IBGE: ${currentCityDetail.ibge_code} • ${currentCityDetail.vaccination_points_count} ponto(s) cadastrado(s)`;
+  } else {
+    cityTitle.textContent = "Alagoas — Busca Estadual";
+    cityMeta.textContent = `102 municípios • ${currentPoints.length} UBSs ativas no SUS`;
+  }
+
+  selectedPointId = null;
+  applyDistancesAndNearest(autoSelectNearest);
+  resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function getFilteredPoints() {
+  const query = searchInput.value.trim().toLowerCase();
+  const vaccineFilter = vaccineSelect.value;
+  const neighborhoodFilter =
+    searchScope === "municipal" ? neighborhoodSelect.value : "";
+  const onlyFavs = favOnlyCheck.checked;
+  const favs = getFavorites();
+
+  const filtered = currentPoints.filter((point) => {
+    const matchesText =
+      !query ||
+      (point.name || "").toLowerCase().includes(query) ||
+      (point.neighborhood || "").toLowerCase().includes(query) ||
+      (point.city_name || "").toLowerCase().includes(query) ||
+      (point.address || "").toLowerCase().includes(query);
+    const matchesVaccine =
+      !vaccineFilter || (point.vaccines || []).includes(vaccineFilter);
+    const matchesNeighborhood =
+      !neighborhoodFilter || (point.neighborhood || "").trim() === neighborhoodFilter;
+    const matchesFav = !onlyFavs || favs.has(point.id);
+    return matchesText && matchesVaccine && matchesNeighborhood && matchesFav;
+  });
+
+  const sortMode = sortSelect.value;
+  filtered.sort((a, b) => {
+    if (sortMode === "distance" && userLocation) {
+      if (a._distanceKm == null && b._distanceKm == null) return a.name.localeCompare(b.name, "pt-BR");
+      if (a._distanceKm == null) return 1;
+      if (b._distanceKm == null) return -1;
+      return a._distanceKm - b._distanceKm;
+    }
+    if (sortMode === "group") {
+      const ga =
+        searchScope === "state"
+          ? a.city_name || "Alagoas"
+          : (a.neighborhood || "Sem bairro informado").trim();
+      const gb =
+        searchScope === "state"
+          ? b.city_name || "Alagoas"
+          : (b.neighborhood || "Sem bairro informado").trim();
+      const cmp = ga.localeCompare(gb, "pt-BR");
+      return cmp !== 0 ? cmp : a.name.localeCompare(b.name, "pt-BR");
+    }
+    return a.name.localeCompare(b.name, "pt-BR");
+  });
+
+  return filtered;
 }
 
 function renderVaccinesBlock(vaccines) {
   if (!vaccines || vaccines.length === 0) {
     return `<div class="vaccines-list"><span class="vaccine-tag">Vacinas não informadas</span></div>`;
   }
-
   const primary = vaccines.slice(0, VISIBLE_VACCINES_LIMIT);
   const extra = vaccines.slice(VISIBLE_VACCINES_LIMIT);
   const primaryHtml = primary
@@ -370,7 +428,6 @@ function renderVaccinesBlock(vaccines) {
   const extraHtml = extra
     .map((v) => `<span class="vaccine-tag">${escapeHtml(v)}</span>`)
     .join("");
-
   return `
     <div class="vaccines-list">${primaryHtml}</div>
     <details class="vaccines-details">
@@ -378,49 +435,6 @@ function renderVaccinesBlock(vaccines) {
       <div class="vaccines-list" style="margin-top: 8px;">${extraHtml}</div>
     </details>
   `;
-}
-
-function getFilteredPoints() {
-  const query = searchInput.value.trim().toLowerCase();
-  const vaccineFilter = vaccineSelect.value;
-  const neighborhoodFilter = neighborhoodSelect ? neighborhoodSelect.value : "";
-  const favs = getFavorites();
-
-  const filtered = currentPoints.filter((point) => {
-    const matchesText =
-      !query ||
-      (point.name || "").toLowerCase().includes(query) ||
-      (point.neighborhood || "").toLowerCase().includes(query) ||
-      (point.address || "").toLowerCase().includes(query);
-    const matchesVaccine =
-      !vaccineFilter || (point.vaccines || []).includes(vaccineFilter);
-    const matchesNeighborhood =
-      !neighborhoodFilter || (point.neighborhood || "").trim() === neighborhoodFilter;
-    const matchesFav = !onlyFavorites || favs.has(point.id);
-    return matchesText && matchesVaccine && matchesNeighborhood && matchesFav;
-  });
-
-  const sortMode = userLocation && sortSelect?.value === "neighborhood"
-    ? "distance"
-    : (sortSelect?.value || "neighborhood");
-
-  filtered.sort((a, b) => {
-    if (sortMode === "distance") {
-      if (a._distanceKm == null && b._distanceKm == null) return a.name.localeCompare(b.name, "pt-BR");
-      if (a._distanceKm == null) return 1;
-      if (b._distanceKm == null) return -1;
-      return a._distanceKm - b._distanceKm;
-    }
-    if (sortMode === "neighborhood") {
-      const na = (a.neighborhood || "Sem bairro informado").trim();
-      const nb = (b.neighborhood || "Sem bairro informado").trim();
-      const cmp = na.localeCompare(nb, "pt-BR");
-      return cmp !== 0 ? cmp : a.name.localeCompare(b.name, "pt-BR");
-    }
-    return a.name.localeCompare(b.name, "pt-BR");
-  });
-
-  return filtered;
 }
 
 function renderCardHtml(p, favs) {
@@ -431,11 +445,16 @@ function renderCardHtml(p, favs) {
       ? `<span class="card-distance">${formatDistance(p._distanceKm)} • A pé ${formatDurationMinutes(p._distanceKm, 5)} • Carro ${formatDurationMinutes(p._distanceKm, 35)}</span>`
       : "";
 
+  const pillText =
+    searchScope === "state"
+      ? [p.city_name, p.neighborhood].filter(Boolean).join(" • ")
+      : p.neighborhood;
+
   return `
     <article class="card${isSelected ? " card-selected" : ""}">
       <div class="card-header">
         <h3 class="card-title">${escapeHtml(p.name)}</h3>
-        ${p.neighborhood ? `<span class="pill">${escapeHtml(p.neighborhood)}</span>` : ""}
+        ${pillText ? `<span class="pill">${escapeHtml(pillText)}</span>` : ""}
       </div>
       ${distBadge}
       <p class="info-line"><strong>Endereço:</strong> ${escapeHtml(p.address || "Não informado")}</p>
@@ -443,12 +462,7 @@ function renderCardHtml(p, favs) {
       <p class="info-line"><strong>Horário:</strong> ${escapeHtml(p.opening_hours || "Não informado")}</p>
       ${renderVaccinesBlock(p.vaccines)}
       <div class="card-actions">
-        <button
-          type="button"
-          class="btn btn-primary btn-sm"
-          data-action="map"
-          data-id="${p.id}"
-        >
+        <button type="button" class="btn btn-primary btn-sm" data-action="map" data-id="${p.id}">
           Ver no mapa / Rota
         </button>
         <button
@@ -460,12 +474,7 @@ function renderCardHtml(p, favs) {
         >
           ${isFav ? "Favoritado" : "Favoritar"}
         </button>
-        <button
-          type="button"
-          class="btn btn-outline btn-sm"
-          data-action="share"
-          data-id="${p.id}"
-        >
+        <button type="button" class="btn btn-outline btn-sm" data-action="share" data-id="${p.id}">
           Compartilhar
         </button>
       </div>
@@ -489,27 +498,27 @@ function renderPoints(shouldFitBounds = true) {
     return;
   }
 
-  const groupByNeighborhood =
-    !(userLocation && sortSelect?.value === "neighborhood") &&
-    (sortSelect?.value || "neighborhood") === "neighborhood";
-
-  if (!groupByNeighborhood) {
+  if (sortSelect.value !== "group") {
     pointsContainer.innerHTML = filtered.map((p) => renderCardHtml(p, favs)).join("");
     return;
   }
 
   const groups = new Map();
   filtered.forEach((p) => {
-    const key = (p.neighborhood || "Sem bairro informado").trim();
+    const key =
+      searchScope === "state"
+        ? p.city_name || "Alagoas"
+        : (p.neighborhood || "Sem bairro informado").trim();
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(p);
   });
 
+  const labelPrefix = searchScope === "state" ? "Município" : "Bairro";
   let html = "";
-  groups.forEach((items, neighborhood) => {
+  groups.forEach((items, groupName) => {
     html += `
       <div class="neighborhood-group">
-        <span>Bairro: ${escapeHtml(neighborhood)}</span>
+        <span>${labelPrefix}: ${escapeHtml(groupName)}</span>
         <span>${items.length} unidade(s)</span>
       </div>
     `;
@@ -518,106 +527,93 @@ function renderPoints(shouldFitBounds = true) {
   pointsContainer.innerHTML = html;
 }
 
-pointsContainer.addEventListener("click", async (e) => {
-  const btn = e.target.closest("button[data-action]");
-  if (!btn) return;
-  const id = Number(btn.dataset.id);
-  const action = btn.dataset.action;
-
-  if (action === "map") {
-    selectPoint(id, true);
-    return;
+async function loadInitialData() {
+  saveFavorites(getFavorites());
+  if (localStorage.getItem(GEO_DONE_KEY) === "1") {
+    collapseGeoStep("Busca manual (clique em Alterar localização se quiser usar GPS ou CEP)");
   }
 
-  if (action === "fav") {
-    const favs = getFavorites();
-    if (favs.has(id)) {
-      favs.delete(id);
-      showToast("Ponto removido dos favoritos.");
-    } else {
-      favs.add(id);
-      showToast("Ponto salvo nos favoritos!");
+  const res = await fetch("/cities");
+  allCities = await res.json();
+
+  citySelect.innerHTML = allCities
+    .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
+    .join("");
+
+  FEATURED_CITIES.forEach((name) => {
+    const city = allCities.find((c) => c.name === name);
+    if (!city) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.dataset.cityId = String(city.id);
+    btn.textContent = city.name;
+    btn.addEventListener("click", async () => {
+      citySelect.value = String(city.id);
+      document.querySelectorAll(".chip").forEach((ch) => {
+        ch.classList.toggle("active", ch.dataset.cityId === String(city.id));
+      });
+      await prepareCityFilters(city.id);
+    });
+    quickCitiesEl.appendChild(btn);
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const paramCity = Number(params.get("city"));
+  const paramPoint = Number(params.get("point"));
+
+  const initialCity =
+    allCities.find((c) => c.id === paramCity) ||
+    allCities.find((c) => c.name === "Maceió") ||
+    allCities[0];
+
+  if (initialCity) {
+    citySelect.value = String(initialCity.id);
+    document.querySelectorAll(".chip").forEach((ch) => {
+      ch.classList.toggle("active", ch.dataset.cityId === String(initialCity.id));
+    });
+    await prepareCityFilters(initialCity.id);
+
+    if (paramPoint) {
+      await showResults(false);
+      selectPoint(paramPoint, false);
     }
-    saveFavorites(favs);
-    renderPoints();
-    return;
   }
-
-  if (action === "share") {
-    const point = currentPoints.find((p) => p.id === id);
-    if (!point) return;
-    const shareUrl = `${window.location.origin}/?city=${point.city_id}&point=${point.id}`;
-    const shareText = `Ponto de vacinação: ${point.name} (${currentCityDetail?.name || "Alagoas"}) — ${point.address || "Endereço não informado"}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: point.name,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch {
-        // Usuário cancelou ou fallback para clipboard
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-      showToast("Link e endereço copiados para compartilhar!");
-    } catch {
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    }
-  }
-});
+}
 
 geoBtn.addEventListener("click", () => {
   if (!navigator.geolocation) {
-    geoStatus.textContent = "Seu navegador não suporta geolocalização. Use o campo de CEP/rua ao lado.";
-    showToast("Geolocalização não suportada neste navegador.", true);
+    geoStatus.textContent = "Seu navegador não suporta geolocalização. Use o campo de CEP/rua.";
     return;
   }
-
-  geoStatus.textContent = "Obtendo sua localização precisa...";
+  geoStatus.textContent = "Obtendo localização...";
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      userLocation = {
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-      };
-      const accMeters = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-      if (accMeters && accMeters > 2000) {
-        geoStatus.textContent = `Atenção: seu navegador estimou sua posição pelo IP da internet (margem de erro de ~${Math.round(accMeters / 1000)} km). Para achar o posto exato da sua rua, digite seu CEP ou endereço ao lado.`;
-      } else {
-        const acc = accMeters ? ` (±${accMeters} m)` : "";
-        geoStatus.textContent = `Localização precisa ativa${acc} — postos ordenados do mais próximo.`;
-      }
-      selectedPointId = null;
-      updateNearestAndRender();
-      showToast("Localização obtida! Posto mais próximo destacado.");
+      userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const accKm = pos.coords.accuracy ? Math.round(pos.coords.accuracy / 1000) : null;
+      const msg =
+        accKm && accKm > 2
+          ? `Localização por IP (~${accKm} km de margem). Para rua exata no PC, informe seu CEP.`
+          : "Localização do dispositivo definida!";
+      geoStatus.textContent = msg;
+      sortSelect.value = "distance";
+      collapseGeoStep(msg);
+      showToast("Localização definida! Agora escolha Municipal ou Estadual e clique em Mostrar Postos.");
     },
     () => {
-      geoStatus.textContent = "Permissão negada ou indisponível. Informe seu CEP ou rua ao lado.";
-      showToast("Use o campo de CEP ou rua para localizar sua posição exata.", true);
+      geoStatus.textContent = "Permissão negada. Digite seu CEP/rua ou clique em Pular.";
+      showToast("Não foi possível acessar o GPS.", true);
     },
     { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
   );
 });
 
-const cepInput = document.getElementById("cepInput");
-const cepBtn = document.getElementById("cepBtn");
-
 async function locateByQuery() {
-  const raw = (cepInput?.value || "").trim();
+  const raw = (cepInput.value || "").trim();
   if (!raw) {
     showToast("Digite um CEP ou nome de rua/bairro.", true);
     return;
   }
-
   geoStatus.textContent = "Buscando endereço em Alagoas...";
   const digits = raw.replace(/\D/g, "");
   const candidates = [];
@@ -628,15 +624,16 @@ async function locateByQuery() {
       const viaData = await viaRes.json();
       if (!viaData.erro) {
         if (viaData.uf && viaData.uf !== "AL") {
-          geoStatus.textContent = `O CEP informado pertence a ${viaData.localidade}/${viaData.uf} (fora de Alagoas).`;
+          geoStatus.textContent = `O CEP pertence a ${viaData.localidade}/${viaData.uf} (fora de Alagoas).`;
           showToast("Informe um CEP de Alagoas.", true);
           return;
         }
         const matchedCity = allCities.find(
           (c) => c.name.toLowerCase() === (viaData.localidade || "").toLowerCase()
         );
-        if (matchedCity && matchedCity.id !== Number(citySelect.value)) {
-          await selectCity(matchedCity.id);
+        if (matchedCity) {
+          citySelect.value = String(matchedCity.id);
+          await prepareCityFilters(matchedCity.id);
         }
         if (viaData.logradouro) {
           candidates.push(
@@ -650,11 +647,8 @@ async function locateByQuery() {
         }
         candidates.push(`${viaData.localidade}, Alagoas, Brasil`);
       }
-    } catch {
-      // Fallback para busca direta no Nominatim
-    }
+    } catch {}
   }
-
   if (candidates.length === 0) {
     candidates.push(`${raw}, Alagoas, Brasil`);
   }
@@ -671,149 +665,93 @@ async function locateByQuery() {
         break;
       }
     }
-
     if (!found) {
-      geoStatus.textContent = "Endereço não encontrado. Tente clicar direto no mapa ou informar bairro + cidade.";
+      geoStatus.textContent = "Endereço não encontrado. Tente bairro + cidade.";
       showToast("Endereço não encontrado.", true);
       return;
     }
-
-    userLocation = {
-      lat: Number(found.lat),
-      lng: Number(found.lon),
-    };
-    selectedPointId = null;
-    geoStatus.textContent = `Localização definida (${found.display_name.split(",").slice(0, 2).join(",")}).`;
-    updateNearestAndRender();
-    showToast("Endereço localizado! Posto mais próximo destacado.");
+    userLocation = { lat: Number(found.lat), lng: Number(found.lon) };
+    const shortLabel = found.display_name.split(",").slice(0, 2).join(",");
+    sortSelect.value = "distance";
+    collapseGeoStep(`Localização definida: ${shortLabel}`);
+    showToast("Endereço localizado! Clique em Mostrar Postos para ver os mais próximos.");
   } catch {
     geoStatus.textContent = "Erro ao consultar serviço de localização.";
-    showToast("Erro ao buscar endereço.", true);
   }
 }
 
-cepBtn?.addEventListener("click", locateByQuery);
-cepInput?.addEventListener("keydown", (e) => {
+cepBtn.addEventListener("click", locateByQuery);
+cepInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
     locateByQuery();
   }
 });
-
-favFilterBtn.addEventListener("click", () => {
-  onlyFavorites = !onlyFavorites;
-  favFilterBtn.setAttribute("aria-pressed", onlyFavorites ? "true" : "false");
-  favFilterBtn.classList.toggle("btn-primary", onlyFavorites);
-  favFilterBtn.classList.toggle("btn-outline", !onlyFavorites);
-  renderPoints();
+skipGeoBtn.addEventListener("click", () => {
+  userLocation = null;
+  collapseGeoStep("Busca manual (sem localização definida)");
 });
+changeGeoBtn.addEventListener("click", expandGeoStep);
 
-const modeAutoBtn = document.getElementById("modeAutoBtn");
-const modeMunicipalBtn = document.getElementById("modeMunicipalBtn");
-const modeStateBtn = document.getElementById("modeStateBtn");
-const autoBox = document.getElementById("autoBox");
-const manualBox = document.getElementById("manualBox");
-const cityField = document.getElementById("cityField");
-const scopeHint = document.getElementById("scopeHint");
-
-let searchMode = "auto"; // "auto" | "municipal" | "state"
-
-async function setSearchMode(mode) {
-  searchMode = mode;
-  modeAutoBtn?.setAttribute("aria-pressed", mode === "auto" ? "true" : "false");
-  modeMunicipalBtn?.setAttribute("aria-pressed", mode === "municipal" ? "true" : "false");
-  modeStateBtn?.setAttribute("aria-pressed", mode === "state" ? "true" : "false");
-
-  if (mode === "auto") {
-    autoBox.style.display = "flex";
-    manualBox.style.display = "none";
-    scopeHint.textContent = "Modo ativo: Localização / CEP";
-    return;
-  }
-
-  autoBox.style.display = "none";
-  manualBox.style.display = "block";
-
-  if (mode === "municipal") {
-    cityField.style.display = "block";
-    quickCitiesEl.style.display = "flex";
-    scopeHint.textContent = "Modo ativo: Busca Manual Municipal";
-    if (citySelect.value) {
-      await selectCity(Number(citySelect.value));
-    }
-    return;
-  }
-
-  // Modo Estadual (todo o Alagoas)
-  cityField.style.display = "none";
-  quickCitiesEl.style.display = "none";
-  scopeHint.textContent = "Modo ativo: Busca Manual Estadual (102 municípios de Alagoas)";
-  await loadStatewidePoints();
-}
-
-async function loadStatewidePoints() {
-  selectedPointId = null;
-  pointsContainer.innerHTML = `<div class="empty-state">Carregando UBSs de todo o estado de Alagoas...</div>`;
-  const allResponses = await Promise.all(
-    allCities.map((c) => fetch(`/vaccination-points/${c.id}`).then((r) => r.json()))
-  );
-  const cityNameById = new Map(allCities.map((c) => [c.id, c.name]));
-  currentCityDetail = {
-    name: "Todo o Estado",
-    state: "AL",
-    ibge_code: "UF 27",
-    vaccination_points_count: 0,
-  };
-  currentPoints = allResponses.flat().map((p) => ({
-    ...p,
-    neighborhood: p.neighborhood
-      ? `${p.neighborhood} (${cityNameById.get(p.city_id) || ""})`
-      : cityNameById.get(p.city_id) || "",
-  }));
-  currentCityDetail.vaccination_points_count = currentPoints.length;
-
-  cityBanner.style.display = "flex";
-  cityTitle.textContent = "Alagoas — Busca Estadual";
-  cityMeta.textContent = `102 municípios • ${currentPoints.length} UBSs ativas no SUS`;
-
-  populateVaccineFilter(currentPoints);
-  populateNeighborhoodFilter(currentPoints);
-  updateNearestAndRender();
-}
-
-function populateNeighborhoodFilter(points) {
-  if (!neighborhoodSelect) return;
-  const previous = neighborhoodSelect.value;
-  const neighborhoods = new Set();
-  points.forEach((p) => {
-    const n = (p.neighborhood || "").trim();
-    if (n) neighborhoods.add(n);
+modeMunicipalBtn.addEventListener("click", () => setScope("municipal"));
+modeStateBtn.addEventListener("click", () => setScope("state"));
+citySelect.addEventListener("change", async (e) => {
+  const id = Number(e.target.value);
+  document.querySelectorAll(".chip").forEach((ch) => {
+    ch.classList.toggle("active", ch.dataset.cityId === String(id));
   });
-  const sorted = Array.from(neighborhoods).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  neighborhoodSelect.innerHTML =
-    `<option value="">Todos os bairros (${sorted.length})</option>` +
-    sorted.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
-  if (sorted.includes(previous)) {
-    neighborhoodSelect.value = previous;
-  }
-}
-
-modeAutoBtn?.addEventListener("click", () => setSearchMode("auto"));
-modeMunicipalBtn?.addEventListener("click", () => setSearchMode("municipal"));
-modeStateBtn?.addEventListener("click", () => setSearchMode("state"));
-
-citySelect.addEventListener("change", (e) => {
-  if (e.target.value) selectCity(Number(e.target.value));
+  if (id) await prepareCityFilters(id);
 });
-searchInput.addEventListener("input", () => renderPoints(true));
-vaccineSelect.addEventListener("change", () => renderPoints(true));
-neighborhoodSelect?.addEventListener("change", () => {
-  selectedPointId = null;
-  renderPoints(true);
-});
-sortSelect?.addEventListener("change", () => renderPoints(false));
-focusPointBtn?.addEventListener("click", () => {
+confirmSearchBtn.addEventListener("click", () => showResults(true));
+focusPointBtn.addEventListener("click", () => {
   if (selectedPointId) selectPoint(selectedPointId, true);
+});
+
+pointsContainer.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  const action = btn.dataset.action;
+
+  if (action === "map") {
+    selectPoint(id, true);
+    return;
+  }
+  if (action === "fav") {
+    const favs = getFavorites();
+    if (favs.has(id)) {
+      favs.delete(id);
+      showToast("Ponto removido dos favoritos.");
+    } else {
+      favs.add(id);
+      showToast("Ponto salvo nos favoritos!");
+    }
+    saveFavorites(favs);
+    renderPoints(false);
+    return;
+  }
+  if (action === "share") {
+    const point = currentPoints.find((p) => p.id === id);
+    if (!point) return;
+    const shareUrl = `${window.location.origin}/?city=${point.city_id}&point=${point.id}`;
+    const shareText = `Ponto de vacinação: ${point.name} (${point.city_name || currentCityDetail?.name || "Alagoas"}) — ${point.address || "Endereço não informado"}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: point.name, text: shareText, url: shareUrl });
+        return;
+      } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      showToast("Link e endereço copiados para compartilhar!");
+    } catch {
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    }
+  }
 });
 
 // Barra de acessibilidade (Alto Contraste + Zoom de Texto)
@@ -859,6 +797,6 @@ fontIncBtn?.addEventListener("click", () => {
 });
 
 initMap();
-loadCities().catch(() => {
-  pointsContainer.innerHTML = `<div class="empty-state">Erro ao carregar dados da API.</div>`;
+loadInitialData().catch(() => {
+  showToast("Erro ao carregar dados iniciais da API.", true);
 });

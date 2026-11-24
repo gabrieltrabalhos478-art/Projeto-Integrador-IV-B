@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.database import create_connection, get_database_url, get_db_path
 from app.errors import register_exception_handlers
-from app.routers import admin, cities, vaccination_points
+from app.routers import admin, cities, portal, vaccination_points
 from scripts.seed import backfill_coordinates, seed_database
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -75,6 +75,7 @@ register_exception_handlers(app)
 app.include_router(cities.router)
 app.include_router(vaccination_points.router)
 app.include_router(admin.router)
+app.include_router(portal.router)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

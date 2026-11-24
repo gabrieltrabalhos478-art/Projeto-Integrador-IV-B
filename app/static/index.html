@@ -67,181 +67,193 @@
 
   <main id="conteudo-principal" class="container main-content">
     <section class="intro-card" aria-labelledby="intro-titulo">
-      <h2 id="intro-titulo">Como este portal ajuda você</h2>
+      <h2 id="intro-titulo">Como este portal funciona</h2>
       <p>
-        Aqui você encontra as Unidades Básicas de Saúde que realizam vacinação nos 102 municípios de Alagoas.
-        Ative sua localização para descobrir o posto mais próximo com tempo estimado de trajeto, salve seus favoritos e compartilhe facilmente.
+        Em 2 passos simples você encontra as Unidades Básicas de Saúde de Alagoas: primeiro defina sua localização (opcional, para calcular distância e tempo), depois escolha buscar em um município ou em todo o estado e confirme.
       </p>
     </section>
 
-    <section class="panel" aria-label="Etapa 1: Escolha como localizar">
-      <span class="step-badge">ETAPA 1 • COMO VOCÊ QUER LOCALIZAR?</span>
-      <div class="mode-tabs" role="group" aria-label="Modo de busca">
-        <button id="modeAutoBtn" class="mode-tab" type="button" aria-pressed="true">
-          1. Por minha localização / CEP
-        </button>
-        <button id="modeMunicipalBtn" class="mode-tab" type="button" aria-pressed="false">
-          2. Manual — Municipal (por cidade)
-        </button>
-        <button id="modeStateBtn" class="mode-tab" type="button" aria-pressed="false">
-          3. Manual — Estadual (todo Alagoas)
-        </button>
-      </div>
-
-      <div id="autoBox" class="geo-bar" style="margin-top: 0; padding-top: 0; border-top: none;">
+    <!-- ETAPA 1: Localização do Usuário -->
+    <section class="panel" aria-label="Etapa 1: Definir sua localização">
+      <div id="geoExpanded">
+        <span class="step-badge">ETAPA 1 • SUA LOCALIZAÇÃO (OPCIONAL)</span>
+        <p class="info-line" style="margin-bottom: 12px;">
+          Ative sua localização para destacarmos o posto mais próximo e calcular o tempo de trajeto a pé, de carro, bicicleta ou ônibus.
+        </p>
         <div class="geo-actions">
           <button id="geoBtn" class="btn btn-accent" type="button">
-            Usar localização do dispositivo (GPS)
+            Permitir minha localização (GPS)
           </button>
           <div class="cep-inline">
-            <label for="cepInput" class="sr-only">Informar CEP ou bairro para localização exata</label>
+            <label for="cepInput" class="sr-only">Informar CEP ou rua em Alagoas</label>
             <input
               id="cepInput"
               type="text"
               placeholder="Ou digite seu CEP / rua..."
-              aria-label="Ou digite seu CEP ou endereço em Alagoas"
+              aria-label="Ou digite seu CEP ou rua em Alagoas"
             />
             <button id="cepBtn" class="btn btn-primary btn-sm" type="button">
               Localizar CEP / Rua
             </button>
           </div>
-        </div>
-        <div id="geoStatus" class="geo-status" aria-live="polite">
-          Dica: no computador sem GPS, digite seu CEP/rua ou clique direto no mapa para marcar sua posição exata.
-        </div>
-      </div>
-
-      <div id="manualBox" style="display: none;">
-        <div class="filters-grid">
-          <div class="field" id="cityField">
-            <label for="citySelect">Município</label>
-            <select id="citySelect">
-              <option value="">Carregando municípios...</option>
-            </select>
-          </div>
-          <div class="field" id="neighborhoodField">
-            <label for="neighborhoodSelect">Bairro</label>
-            <select id="neighborhoodSelect">
-              <option value="">Todos os bairros</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="searchInput">Buscar UBS ou endereço</label>
-            <input id="searchInput" type="search" placeholder="Ex.: UBS, PSF, rua..." />
-          </div>
-          <div class="field">
-            <label for="vaccineSelect">Filtrar por vacina</label>
-            <select id="vaccineSelect">
-              <option value="">Todas as vacinas</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="sortSelect">Organizar lista</label>
-            <select id="sortSelect">
-              <option value="neighborhood">Agrupar por Bairro (A–Z)</option>
-              <option value="name">Ordem alfabética (A–Z)</option>
-              <option value="distance">Mais próximos primeiro</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="quick-cities" id="quickCities">
-          <span class="quick-label">Acesso rápido:</span>
-        </div>
-      </div>
-
-      <div class="geo-bar">
-        <div class="geo-actions">
-          <button
-            id="favFilterBtn"
-            class="btn btn-outline"
-            type="button"
-            aria-pressed="false"
-          >
-            Favoritos (<span id="favCount">0</span>)
+          <button id="skipGeoBtn" class="btn btn-outline btn-sm" type="button">
+            Pular por enquanto
           </button>
         </div>
-        <div class="city-meta" id="scopeHint">
-          Modo ativo: Localização / CEP
+        <div id="geoStatus" class="geo-status" style="margin-top: 10px;" aria-live="polite">
+          Nenhuma localização definida ainda.
         </div>
+      </div>
+
+      <div id="geoCompact" class="geo-summary-bar" style="display: none;">
+        <div>
+          <span class="step-badge" style="margin-bottom: 0; margin-right: 8px;">ETAPA 1</span>
+          <span id="geoSummaryText" class="geo-status">Localização não definida (busca manual)</span>
+        </div>
+        <button id="changeGeoBtn" class="btn btn-outline btn-sm" type="button">
+          Alterar localização
+        </button>
       </div>
     </section>
 
-    <section
-      id="nearestSection"
-      class="nearest-highlight"
-      style="display: none;"
-      aria-live="polite"
-    >
-      <h3 id="nearestTitle">Posto mais próximo</h3>
-      <p id="nearestBody" class="info-line"></p>
-    </section>
+    <!-- ETAPA 2: Escolher Municipal ou Estadual + Filtros + Confirmar -->
+    <section class="panel" aria-label="Etapa 2: Escolher alcance e filtros">
+      <span class="step-badge">ETAPA 2 • ESCOLHA O QUE MOSTRAR</span>
+      <div class="mode-tabs" role="group" aria-label="Alcance da busca">
+        <button id="modeMunicipalBtn" class="mode-tab" type="button" aria-pressed="true">
+          Municipal (1 cidade)
+        </button>
+        <button id="modeStateBtn" class="mode-tab" type="button" aria-pressed="false">
+          Estadual (todo Alagoas)
+        </button>
+      </div>
 
-    <section class="map-section" aria-label="Mapa e estimativa de tempo por modal">
-      <div class="map-header">
-        <h2>Mapa de Pontos de Vacinação</h2>
-        <div class="map-actions">
-          <button id="focusPointBtn" class="btn btn-outline btn-sm" type="button" style="display: none;">
-            Focar no posto selecionado
-          </button>
-          <a class="btn btn-outline btn-sm" href="#pointsContainer">
-            Pular mapa para a lista acessível
-          </a>
+      <div class="filters-grid">
+        <div class="field" id="cityField">
+          <label for="citySelect">Município</label>
+          <select id="citySelect">
+            <option value="">Carregando municípios...</option>
+          </select>
+        </div>
+        <div class="field" id="neighborhoodField">
+          <label for="neighborhoodSelect">Bairro</label>
+          <select id="neighborhoodSelect">
+            <option value="">Todos os bairros</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="searchInput" id="searchLabel">Buscar UBS ou endereço</label>
+          <input id="searchInput" type="search" placeholder="Ex.: UBS, PSF, rua..." />
+        </div>
+        <div class="field">
+          <label for="vaccineSelect">Vacina</label>
+          <select id="vaccineSelect">
+            <option value="">Todas as vacinas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sortSelect">Organizar resultado</label>
+          <select id="sortSelect">
+            <option value="group">Agrupar por Bairro (A–Z)</option>
+            <option value="distance">Mais próximos primeiro</option>
+            <option value="name">Ordem alfabética (A–Z)</option>
+          </select>
         </div>
       </div>
-      <div class="map-layout">
-        <div
-          id="map"
-          class="map-canvas"
-          role="region"
-          aria-label="Mapa interativo com marcadores das Unidades Básicas de Saúde"
-        ></div>
-        <aside class="route-panel" aria-live="polite">
-          <h3 id="routePointName">Selecione um posto no mapa ou na lista</h3>
-          <p id="routePointAddress" class="info-line">
-            Ative sua localização ou clique em "Ver no mapa / Rota" em qualquer UBS para calcular distância e tempo estimado.
-          </p>
-          <div id="modalTimesGrid" class="modal-times-grid" style="display: none;">
-            <div class="time-box">
-              <span class="time-box-label">A pé (~5 km/h)</span>
-              <span class="time-box-value" id="timeWalk">—</span>
-            </div>
-            <div class="time-box">
-              <span class="time-box-label">Carro (~35 km/h)</span>
-              <span class="time-box-value" id="timeCar">—</span>
-            </div>
-            <div class="time-box">
-              <span class="time-box-label">Bicicleta (~15 km/h)</span>
-              <span class="time-box-value" id="timeBike">—</span>
-            </div>
-            <div class="time-box">
-              <span class="time-box-label">Ônibus / Moto (~22 km/h)</span>
-              <span class="time-box-value" id="timeTransit">—</span>
-            </div>
+
+      <div class="quick-cities" id="quickCities">
+        <span class="quick-label">Cidades rápidas:</span>
+      </div>
+
+      <div class="confirm-bar">
+        <label class="fav-check">
+          <input id="favOnlyCheck" type="checkbox" />
+          <span>Somente meus favoritos (<span id="favCount">0</span>)</span>
+        </label>
+        <button id="confirmSearchBtn" class="btn btn-primary" type="button">
+          Mostrar Postos
+        </button>
+      </div>
+    </section>
+
+    <!-- ETAPA 3: Resultados (Mapa + Lista) -->
+    <div id="resultsSection" style="display: none;">
+      <section
+        id="nearestSection"
+        class="nearest-highlight"
+        style="display: none;"
+        aria-live="polite"
+      >
+        <h3 id="nearestTitle">Posto mais próximo</h3>
+        <p id="nearestBody" class="info-line"></p>
+      </section>
+
+      <section class="map-section" aria-label="Mapa e estimativa de tempo por modal">
+        <div class="map-header">
+          <h2>Mapa de Pontos de Vacinação</h2>
+          <div class="map-actions">
+            <button id="focusPointBtn" class="btn btn-outline btn-sm" type="button" style="display: none;">
+              Focar no posto selecionado
+            </button>
+            <a class="btn btn-outline btn-sm" href="#pointsContainer">
+              Pular mapa para a lista acessível
+            </a>
           </div>
-          <a
-            id="googleMapsLink"
-            class="btn btn-primary btn-sm"
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            style="display: none;"
-          >
-            Abrir rota no Google Maps
-          </a>
-        </aside>
-      </div>
-    </section>
+        </div>
+        <div class="map-layout">
+          <div
+            id="map"
+            class="map-canvas"
+            role="region"
+            aria-label="Mapa interativo com marcadores das Unidades Básicas de Saúde"
+          ></div>
+          <aside class="route-panel" aria-live="polite">
+            <h3 id="routePointName">Selecione um posto no mapa ou na lista</h3>
+            <p id="routePointAddress" class="info-line">
+              Clique em "Ver no mapa / Rota" em qualquer UBS para ver detalhes e abrir a rota no Google Maps.
+            </p>
+            <div id="modalTimesGrid" class="modal-times-grid" style="display: none;">
+              <div class="time-box">
+                <span class="time-box-label">A pé (~5 km/h)</span>
+                <span class="time-box-value" id="timeWalk">—</span>
+              </div>
+              <div class="time-box">
+                <span class="time-box-label">Carro (~35 km/h)</span>
+                <span class="time-box-value" id="timeCar">—</span>
+              </div>
+              <div class="time-box">
+                <span class="time-box-label">Bicicleta (~15 km/h)</span>
+                <span class="time-box-value" id="timeBike">—</span>
+              </div>
+              <div class="time-box">
+                <span class="time-box-label">Ônibus / Moto (~22 km/h)</span>
+                <span class="time-box-value" id="timeTransit">—</span>
+              </div>
+            </div>
+            <a
+              id="googleMapsLink"
+              class="btn btn-primary btn-sm"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="display: none;"
+            >
+              Abrir rota no Google Maps
+            </a>
+          </aside>
+        </div>
+      </section>
 
-    <section class="city-banner" id="cityBanner" style="display: none;" aria-live="polite">
-      <div>
-        <h2 id="cityTitle">—</h2>
-        <div class="city-meta" id="cityMeta">—</div>
-      </div>
-      <div class="city-meta" id="resultsCount">—</div>
-    </section>
+      <section class="city-banner" id="cityBanner" style="display: none;" aria-live="polite">
+        <div>
+          <h2 id="cityTitle">—</h2>
+          <div class="city-meta" id="cityMeta">—</div>
+        </div>
+        <div class="city-meta" id="resultsCount">—</div>
+      </section>
 
-    <section id="pointsContainer" class="cards-grid" aria-live="polite"></section>
+      <section id="pointsContainer" class="cards-grid" aria-live="polite"></section>
+    </div>
   </main>
 
   <footer class="footer-portal">
