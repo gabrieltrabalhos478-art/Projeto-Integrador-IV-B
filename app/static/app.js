@@ -42,8 +42,6 @@ let onlyFavorites = false;
 
 let map = null;
 let markersLayer = null;
-let userMarker = null;
-let routeLine = null;
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -131,20 +129,6 @@ function updateMapMarkers(points, shouldFitBounds = true) {
   markersLayer.clearLayers();
 
   const bounds = [];
-  if (userLocation) {
-    if (userMarker) map.removeLayer(userMarker);
-    userMarker = window.L.circleMarker([userLocation.lat, userLocation.lng], {
-      radius: 9,
-      color: "#FFFFFF",
-      weight: 3,
-      fillColor: "#B91C1C",
-      fillOpacity: 1,
-    })
-      .addTo(map)
-      .bindPopup("<strong>Sua localização</strong>");
-    bounds.push([userLocation.lat, userLocation.lng]);
-  }
-
   points.forEach((p) => {
     if (p.latitude == null || p.longitude == null) return;
     const isSelected = p.id === selectedPointId;
@@ -158,7 +142,8 @@ function updateMapMarkers(points, shouldFitBounds = true) {
         fillOpacity: 1,
       }).addTo(markersLayer);
       marker.bindPopup(
-        `<strong>Posto selecionado: ${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`
+        `<strong>Posto selecionado: ${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`,
+        { autoPan: false }
       );
       marker.openPopup();
     } else {
@@ -170,11 +155,15 @@ function updateMapMarkers(points, shouldFitBounds = true) {
         fillOpacity: 0.85,
       }).addTo(markersLayer);
       marker.bindPopup(
-        `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`
+        `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address || "")}`,
+        { autoPan: false }
       );
     }
     marker.on("click", () => selectPoint(p.id, false));
-    bounds.push([p.latitude, p.longitude]);
+    // Evitar que coordenadas fora do continente (ex.: erro de cadastro CNES no mar) puxem o zoom geral
+    if (p.longitude < -35.0) {
+      bounds.push([p.latitude, p.longitude]);
+    }
   });
 
   if (shouldFitBounds && bounds.length > 0 && !selectedPointId) {
@@ -219,26 +208,14 @@ function selectPoint(pointId, scrollToMap = true) {
     timeBike.textContent = formatDurationMinutes(km, 15);
     timeTransit.textContent = formatDurationMinutes(km, 22);
     modalTimesGrid.style.display = "grid";
-
-    if (map) {
-      if (routeLine) map.removeLayer(routeLine);
-      routeLine = window.L.polyline(
-        [
-          [userLocation.lat, userLocation.lng],
-          [point.latitude, point.longitude],
-        ],
-        { color: "#B91C1C", weight: 4, dashArray: "6 6" }
-      ).addTo(map);
-      map.fitBounds(routeLine.getBounds(), { padding: [50, 50], maxZoom: 17 });
-    }
   } else {
     modalTimesGrid.style.display = "none";
-    if (map && hasCoords) {
-      map.setView([point.latitude, point.longitude], 16);
-    }
   }
 
   renderPoints(false);
+  if (map && hasCoords) {
+    map.setView([point.latitude, point.longitude], 16);
+  }
   if (scrollToMap) {
     document.querySelector(".map-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
