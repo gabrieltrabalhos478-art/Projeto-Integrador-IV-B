@@ -123,8 +123,10 @@ function renderTable() {
         <td>${escapeHtml(p.neighborhood || "—")}<br><small style="color:#64748b;">${escapeHtml(p.address || "Endereço não informado")}</small></td>
         <td class="vaccines-count-cell"><small>${p.vaccines.length} vacina(s)</small></td>
         <td class="actions-cell">
-          <button class="btn btn-outline btn-sm" type="button" onclick="openEditModal(${p.id})">Editar</button>
-          <button class="btn btn-danger btn-sm" type="button" onclick="deletePoint(${p.id})">Excluir</button>
+          <div class="actions-group">
+            <button class="btn btn-outline btn-sm" type="button" onclick="openEditModal(${p.id})">Editar</button>
+            <button class="btn btn-danger btn-sm" type="button" onclick="deletePoint(${p.id})">Excluir</button>
+          </div>
         </td>
       </tr>
     `

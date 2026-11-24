@@ -74,34 +74,24 @@
       </p>
     </section>
 
-    <section class="panel" aria-label="Filtros de busca">
-      <div class="filters-grid">
-        <div class="field">
-          <label for="citySelect">Município</label>
-          <select id="citySelect">
-            <option value="">Carregando municípios...</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="searchInput">Buscar UBS ou bairro</label>
-          <input id="searchInput" type="search" placeholder="Ex.: Jacintinho, UBS, Centro..." />
-        </div>
-        <div class="field">
-          <label for="vaccineSelect">Filtrar por vacina</label>
-          <select id="vaccineSelect">
-            <option value="">Todas as vacinas</option>
-          </select>
-        </div>
+    <section class="panel" aria-label="Etapa 1: Escolha como localizar">
+      <span class="step-badge">ETAPA 1 • COMO VOCÊ QUER LOCALIZAR?</span>
+      <div class="mode-tabs" role="group" aria-label="Modo de busca">
+        <button id="modeAutoBtn" class="mode-tab" type="button" aria-pressed="true">
+          1. Por minha localização / CEP
+        </button>
+        <button id="modeMunicipalBtn" class="mode-tab" type="button" aria-pressed="false">
+          2. Manual — Municipal (por cidade)
+        </button>
+        <button id="modeStateBtn" class="mode-tab" type="button" aria-pressed="false">
+          3. Manual — Estadual (todo Alagoas)
+        </button>
       </div>
 
-      <div class="quick-cities" id="quickCities">
-        <span class="quick-label">Acesso rápido:</span>
-      </div>
-
-      <div class="geo-bar">
+      <div id="autoBox" class="geo-bar" style="margin-top: 0; padding-top: 0; border-top: none;">
         <div class="geo-actions">
           <button id="geoBtn" class="btn btn-accent" type="button">
-            Usar minha localização (posto mais próximo)
+            Usar localização do dispositivo (GPS)
           </button>
           <div class="cep-inline">
             <label for="cepInput" class="sr-only">Informar CEP ou bairro para localização exata</label>
@@ -111,10 +101,43 @@
               placeholder="Ou digite seu CEP / rua..."
               aria-label="Ou digite seu CEP ou endereço em Alagoas"
             />
-            <button id="cepBtn" class="btn btn-outline btn-sm" type="button">
-              Localizar
+            <button id="cepBtn" class="btn btn-primary btn-sm" type="button">
+              Localizar CEP / Rua
             </button>
           </div>
+        </div>
+        <div id="geoStatus" class="geo-status" aria-live="polite">
+          Dica: no computador sem GPS, use seu CEP ou rua para localização exata.
+        </div>
+      </div>
+
+      <div id="manualBox" style="display: none;">
+        <div class="filters-grid">
+          <div class="field" id="cityField">
+            <label for="citySelect">Município</label>
+            <select id="citySelect">
+              <option value="">Carregando municípios...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="searchInput">Buscar UBS ou bairro</label>
+            <input id="searchInput" type="search" placeholder="Ex.: Jacintinho, UBS, Centro..." />
+          </div>
+          <div class="field">
+            <label for="vaccineSelect">Filtrar por vacina</label>
+            <select id="vaccineSelect">
+              <option value="">Todas as vacinas</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="quick-cities" id="quickCities">
+          <span class="quick-label">Acesso rápido:</span>
+        </div>
+      </div>
+
+      <div class="geo-bar">
+        <div class="geo-actions">
           <button
             id="favFilterBtn"
             class="btn btn-outline"
@@ -124,8 +147,8 @@
             Favoritos (<span id="favCount">0</span>)
           </button>
         </div>
-        <div id="geoStatus" class="geo-status" aria-live="polite">
-          Localização não ativada — exibindo todos os pontos da cidade.
+        <div class="city-meta" id="scopeHint">
+          Modo ativo: Localização / CEP
         </div>
       </div>
     </section>

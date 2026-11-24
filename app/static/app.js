@@ -504,8 +504,13 @@ geoBtn.addEventListener("click", () => {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
       };
-      const acc = pos.coords.accuracy ? ` (±${Math.round(pos.coords.accuracy)} m)` : "";
-      geoStatus.textContent = `Localização ativa${acc} — se estiver imprecisa no PC, informe seu CEP/rua ao lado.`;
+      const accMeters = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      if (accMeters && accMeters > 2000) {
+        geoStatus.textContent = `Atenção: seu navegador estimou sua posição pelo IP da internet (margem de erro de ~${Math.round(accMeters / 1000)} km). Para achar o posto exato da sua rua, digite seu CEP ou endereço ao lado.`;
+      } else {
+        const acc = accMeters ? ` (±${accMeters} m)` : "";
+        geoStatus.textContent = `Localização precisa ativa${acc} — postos ordenados do mais próximo.`;
+      }
       selectedPointId = null;
       updateNearestAndRender();
       showToast("Localização obtida! Posto mais próximo destacado.");
@@ -597,6 +602,82 @@ favFilterBtn.addEventListener("click", () => {
   favFilterBtn.classList.toggle("btn-outline", !onlyFavorites);
   renderPoints();
 });
+
+const modeAutoBtn = document.getElementById("modeAutoBtn");
+const modeMunicipalBtn = document.getElementById("modeMunicipalBtn");
+const modeStateBtn = document.getElementById("modeStateBtn");
+const autoBox = document.getElementById("autoBox");
+const manualBox = document.getElementById("manualBox");
+const cityField = document.getElementById("cityField");
+const scopeHint = document.getElementById("scopeHint");
+
+let searchMode = "auto"; // "auto" | "municipal" | "state"
+
+async function setSearchMode(mode) {
+  searchMode = mode;
+  modeAutoBtn?.setAttribute("aria-pressed", mode === "auto" ? "true" : "false");
+  modeMunicipalBtn?.setAttribute("aria-pressed", mode === "municipal" ? "true" : "false");
+  modeStateBtn?.setAttribute("aria-pressed", mode === "state" ? "true" : "false");
+
+  if (mode === "auto") {
+    autoBox.style.display = "flex";
+    manualBox.style.display = "none";
+    scopeHint.textContent = "Modo ativo: Localização / CEP";
+    return;
+  }
+
+  autoBox.style.display = "none";
+  manualBox.style.display = "block";
+
+  if (mode === "municipal") {
+    cityField.style.display = "block";
+    quickCitiesEl.style.display = "flex";
+    scopeHint.textContent = "Modo ativo: Busca Manual Municipal";
+    if (citySelect.value) {
+      await selectCity(Number(citySelect.value));
+    }
+    return;
+  }
+
+  // Modo Estadual (todo o Alagoas)
+  cityField.style.display = "none";
+  quickCitiesEl.style.display = "none";
+  scopeHint.textContent = "Modo ativo: Busca Manual Estadual (102 municípios de Alagoas)";
+  await loadStatewidePoints();
+}
+
+async function loadStatewidePoints() {
+  selectedPointId = null;
+  pointsContainer.innerHTML = `<div class="empty-state">Carregando UBSs de todo o estado de Alagoas...</div>`;
+  const allResponses = await Promise.all(
+    allCities.map((c) => fetch(`/vaccination-points/${c.id}`).then((r) => r.json()))
+  );
+  const cityNameById = new Map(allCities.map((c) => [c.id, c.name]));
+  currentCityDetail = {
+    name: "Todo o Estado",
+    state: "AL",
+    ibge_code: "UF 27",
+    vaccination_points_count: 0,
+  };
+  currentPoints = allResponses.flat().map((p) => ({
+    ...p,
+    neighborhood: p.neighborhood
+      ? `${p.neighborhood} (${cityNameById.get(p.city_id) || ""})`
+      : cityNameById.get(p.city_id) || "",
+  }));
+  currentCityDetail.vaccination_points_count = currentPoints.length;
+
+  cityBanner.style.display = "flex";
+  cityTitle.textContent = "Alagoas — Busca Estadual";
+  cityMeta.textContent = `102 municípios • ${currentPoints.length} UBSs ativas no SUS`;
+
+  populateVaccineFilter(currentPoints);
+  updateNearestAndRender();
+}
+
+modeAutoBtn?.addEventListener("click", () => setSearchMode("auto"));
+modeMunicipalBtn?.addEventListener("click", () => setSearchMode("municipal"));
+modeStateBtn?.addEventListener("click", () => setSearchMode("state"));
 
 citySelect.addEventListener("change", (e) => {
   if (e.target.value) selectCity(Number(e.target.value));
