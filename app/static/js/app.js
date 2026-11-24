@@ -219,7 +219,10 @@ function selectPoint(pointId, scrollToMap = true) {
 
   renderPoints(false);
   if (map && hasCoords) {
-    map.setView([point.latitude, point.longitude], 16);
+    setTimeout(() => {
+      map.invalidateSize();
+      map.setView([point.latitude, point.longitude], 17, { animate: false });
+    }, 80);
   }
   if (scrollToMap) {
     document.querySelector(".map-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
