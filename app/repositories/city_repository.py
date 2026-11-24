@@ -1,19 +1,16 @@
-import sqlite3
+from typing import Any
+
+from app.database import DBConnection
 
 
-def list_cities(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+def list_cities(conn: DBConnection) -> list[Any]:
     """Return all cities ordered by id."""
-    cursor = conn.execute(
-        "SELECT id, name, ibge_code FROM cities ORDER BY id ASC"
-    )
-    return cursor.fetchall()
+    return conn.fetchall("SELECT id, name, ibge_code FROM cities ORDER BY id ASC")
 
 
-def get_city_by_id_with_count(
-    conn: sqlite3.Connection, city_id: int
-) -> sqlite3.Row | None:
+def get_city_by_id_with_count(conn: DBConnection, city_id: int) -> Any:
     """Return a single city with its vaccination point count, or None if not found."""
-    cursor = conn.execute(
+    return conn.fetchone(
         """
         SELECT
           c.id,
@@ -27,10 +24,8 @@ def get_city_by_id_with_count(
         """,
         (city_id,),
     )
-    return cursor.fetchone()
 
 
-def city_exists(conn: sqlite3.Connection, city_id: int) -> bool:
+def city_exists(conn: DBConnection, city_id: int) -> bool:
     """Check whether a city with the given id exists."""
-    cursor = conn.execute("SELECT 1 FROM cities WHERE id = ?", (city_id,))
-    return cursor.fetchone() is not None
+    return conn.fetchone("SELECT 1 FROM cities WHERE id = ?", (city_id,)) is not None

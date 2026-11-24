@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Administrativo — Pontos de Vacinação (AL)</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <div class="topbar-row">
+        <div>
+          <span class="brand-badge">ÁREA ADMINISTRATIVA</span>
+          <h1>Gerenciar Pontos de Vacinação</h1>
+          <p>Cadastre, atualize ou remova Unidades Básicas de Saúde e vacinas disponíveis.</p>
+        </div>
+        <nav class="nav-actions">
+          <a class="btn btn-light" href="/">Voltar ao Portal</a>
+          <button id="logoutBtn" class="btn btn-light" type="button" style="display: none;">Sair</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <section id="loginSection" class="panel login-box">
+      <h2 style="margin-top: 0;">Acesso Restrito</h2>
+      <p class="city-meta" style="margin-bottom: 16px;">
+        Informe a senha administrativa configurada no servidor (<code>ADMIN_PASSWORD</code>).
+      </p>
+      <form id="loginForm">
+        <div class="field" style="margin-bottom: 14px;">
+          <label for="adminPassword">Senha</label>
+          <input id="adminPassword" type="password" required placeholder="Digite a senha..." />
+        </div>
+        <button class="btn btn-primary" type="submit" style="width: 100%;">Entrar</button>
+      </form>
+    </section>
+
+    <section id="adminSection" style="display: none;">
+      <div class="panel">
+        <div class="topbar-row">
+          <div class="field" style="min-width: 260px; flex: 1;">
+            <label for="adminCitySelect">Município</label>
+            <select id="adminCitySelect"></select>
+          </div>
+          <div class="field" style="min-width: 220px; flex: 1;">
+            <label for="adminSearch">Filtrar na lista</label>
+            <input id="adminSearch" type="search" placeholder="Nome ou bairro..." />
+          </div>
+          <div style="align-self: flex-end;">
+            <button id="newPointBtn" class="btn btn-primary" type="button">+ Novo Ponto</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome da Unidade</th>
+              <th>Bairro / Endereço</th>
+              <th>Vacinas</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="pointsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="pointModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Novo Ponto de Vacinação</h3>
+        <button id="closeModalBtn" class="btn btn-outline btn-sm" type="button">Fechar</button>
+      </div>
+      <form id="pointForm">
+        <input type="hidden" id="pointId" />
+        <div class="form-grid">
+          <div class="field full">
+            <label for="formCityId">Município *</label>
+            <select id="formCityId" required></select>
+          </div>
+          <div class="field full">
+            <label for="formName">Nome da Unidade *</label>
+            <input id="formName" type="text" required minlength="2" maxlength="200" placeholder="Ex.: UBS Central" />
+          </div>
+          <div class="field">
+            <label for="formAddress">Endereço</label>
+            <input id="formAddress" type="text" maxlength="300" placeholder="Rua, número" />
+          </div>
+          <div class="field">
+            <label for="formNeighborhood">Bairro</label>
+            <input id="formNeighborhood" type="text" maxlength="150" placeholder="Ex.: Centro" />
+          </div>
+          <div class="field">
+            <label for="formPhone">Telefone</label>
+            <input id="formPhone" type="text" maxlength="60" placeholder="(82) 3333-0000" />
+          </div>
+          <div class="field">
+            <label for="formHours">Horário de atendimento</label>
+            <input id="formHours" type="text" maxlength="200" placeholder="08:00 às 17:00" />
+          </div>
+          <div class="field full">
+            <label>Vacinas disponíveis</label>
+            <div id="vaccinesCheckboxes" class="vaccines-checks"></div>
+          </div>
+          <div class="field full">
+            <label for="formCustomVaccines">Outras vacinas (separadas por ;)</label>
+            <input id="formCustomVaccines" type="text" placeholder="Ex.: Meningocócica ACWY;HPV" />
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+          <button id="cancelModalBtn" class="btn btn-outline" type="button">Cancelar</button>
+          <button class="btn btn-primary" type="submit">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>

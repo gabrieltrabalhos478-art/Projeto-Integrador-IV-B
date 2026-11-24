@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal de Vacinação — Alagoas</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <div class="topbar-row">
+        <div>
+          <span class="brand-badge">ALAGOAS • SUS / CNES</span>
+          <h1>Pontos de Vacinação em Alagoas</h1>
+          <p>Consulte Unidades Básicas de Saúde (UBSs) nos 102 municípios alagoanos.</p>
+        </div>
+        <nav class="nav-actions">
+          <a class="btn btn-light" href="/docs">Documentação API</a>
+          <a class="btn btn-light" href="/admin">Painel Admin</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <section class="panel" aria-label="Filtros de busca">
+      <div class="filters-grid">
+        <div class="field">
+          <label for="citySelect">Município</label>
+          <select id="citySelect">
+            <option value="">Carregando municípios...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="searchInput">Buscar UBS ou bairro</label>
+          <input id="searchInput" type="search" placeholder="Ex.: Jacintinho, UBS, Centro..." />
+        </div>
+        <div class="field">
+          <label for="vaccineSelect">Filtrar por vacina</label>
+          <select id="vaccineSelect">
+            <option value="">Todas as vacinas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="quick-cities" id="quickCities">
+        <span class="quick-label">Acesso rápido:</span>
+      </div>
+    </section>
+
+    <section class="city-banner" id="cityBanner" style="display: none;">
+      <div>
+        <h2 id="cityTitle">—</h2>
+        <div class="city-meta" id="cityMeta">—</div>
+      </div>
+      <div class="city-meta" id="resultsCount">—</div>
+    </section>
+
+    <section id="pointsContainer" class="cards-grid" aria-live="polite"></section>
+
+    <p class="footer-note">
+      Fontes: IBGE (municípios) e CNES / Ministério da Saúde (UBSs ativas SUS). A lista de vacinas utiliza o calendário básico do PNI como referência informativa, podendo ser atualizada pelo painel administrativo.
+    </p>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

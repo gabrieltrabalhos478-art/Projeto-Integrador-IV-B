@@ -1,11 +1,10 @@
-import sqlite3
-
+from app.database import DBConnection
 from app.errors import CityNotFoundError
 from app.repositories import city_repository
 from app.schemas.city import CityDetail, CitySummary
 
 
-def list_cities(conn: sqlite3.Connection) -> list[CitySummary]:
+def list_cities(conn: DBConnection) -> list[CitySummary]:
     """Retrieve all available municipalities in Alagoas."""
     rows = city_repository.list_cities(conn)
     return [
@@ -14,7 +13,7 @@ def list_cities(conn: sqlite3.Connection) -> list[CitySummary]:
     ]
 
 
-def get_city_detail(conn: sqlite3.Connection, city_id: int) -> CityDetail:
+def get_city_detail(conn: DBConnection, city_id: int) -> CityDetail:
     """Retrieve municipality details or raise CityNotFoundError."""
     row = city_repository.get_city_by_id_with_count(conn, city_id)
     if row is None:
