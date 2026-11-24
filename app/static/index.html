@@ -39,31 +39,31 @@
       </div>
     </div>
     <div class="flag-stripe" aria-hidden="true"></div>
-
-    <header class="portal-banner">
-      <div class="container">
-        <div class="banner-row">
-          <div class="banner-brand">
-            <img
-              src="/static/bandeira-alagoas.png"
-              alt="Bandeira do Estado de Alagoas"
-              class="flag-img"
-              width="76"
-              height="52"
-            />
-            <div>
-              <span class="brand-kicker">Rede Estadual de Imunização</span>
-              <h1>Portal de Vacinação de Alagoas</h1>
-              <p class="banner-subtitle">Unidades Básicas de Saúde (UBSs) ativas no SUS em todo o estado</p>
-            </div>
-          </div>
-          <nav class="nav-actions" aria-label="Navegação principal">
-            <a class="btn btn-primary" href="/admin">Painel Admin</a>
-          </nav>
-        </div>
-      </div>
-    </header>
   </div>
+
+  <header class="portal-banner">
+    <div class="container">
+      <div class="banner-row">
+        <div class="banner-brand">
+          <img
+            src="/static/bandeira-alagoas.png"
+            alt="Bandeira do Estado de Alagoas"
+            class="flag-img"
+            width="76"
+            height="52"
+          />
+          <div>
+            <span class="brand-kicker">Rede Estadual de Imunização</span>
+            <h1>Portal de Vacinação de Alagoas</h1>
+            <p class="banner-subtitle">Unidades Básicas de Saúde (UBSs) ativas no SUS em todo o estado</p>
+          </div>
+        </div>
+        <nav class="nav-actions" aria-label="Navegação principal">
+          <a class="btn btn-primary" href="/admin">Painel Admin</a>
+        </nav>
+      </div>
+    </div>
+  </header>
 
   <main id="conteudo-principal" class="container main-content">
     <section class="intro-card" aria-labelledby="intro-titulo">
@@ -103,6 +103,18 @@
           <button id="geoBtn" class="btn btn-accent" type="button">
             Usar minha localização (posto mais próximo)
           </button>
+          <div class="cep-inline">
+            <label for="cepInput" class="sr-only">Informar CEP ou bairro para localização exata</label>
+            <input
+              id="cepInput"
+              type="text"
+              placeholder="Ou digite seu CEP / rua..."
+              aria-label="Ou digite seu CEP ou endereço em Alagoas"
+            />
+            <button id="cepBtn" class="btn btn-outline btn-sm" type="button">
+              Localizar
+            </button>
+          </div>
           <button
             id="favFilterBtn"
             class="btn btn-outline"
@@ -207,7 +219,6 @@
         >
           Documentação da API (nova aba)
         </a>
-        <a class="btn btn-light btn-sm" href="/admin">Painel Admin</a>
       </div>
     </div>
   </footer>

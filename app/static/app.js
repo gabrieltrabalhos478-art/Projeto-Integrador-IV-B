@@ -492,29 +492,102 @@ pointsContainer.addEventListener("click", async (e) => {
 
 geoBtn.addEventListener("click", () => {
   if (!navigator.geolocation) {
-    geoStatus.textContent = "Seu navegador não suporta geolocalização.";
+    geoStatus.textContent = "Seu navegador não suporta geolocalização. Use o campo de CEP/rua ao lado.";
     showToast("Geolocalização não suportada neste navegador.", true);
     return;
   }
 
-  geoStatus.textContent = "Obtendo sua localização...";
+  geoStatus.textContent = "Obtendo sua localização precisa...";
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       userLocation = {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
       };
-      geoStatus.textContent = "Localização ativa — postos ordenados do mais próximo ao mais distante.";
+      const acc = pos.coords.accuracy ? ` (±${Math.round(pos.coords.accuracy)} m)` : "";
+      geoStatus.textContent = `Localização ativa${acc} — se estiver imprecisa no PC, informe seu CEP/rua ao lado.`;
       selectedPointId = null;
       updateNearestAndRender();
       showToast("Localização obtida! Posto mais próximo destacado.");
     },
     () => {
-      geoStatus.textContent = "Não foi possível obter a localização (permissão negada ou indisponível).";
-      showToast("Permita o acesso à localização no navegador para calcular distâncias.", true);
+      geoStatus.textContent = "Permissão negada ou indisponível. Informe seu CEP ou rua ao lado.";
+      showToast("Use o campo de CEP ou rua para localizar sua posição exata.", true);
     },
-    { enableHighAccuracy: true, timeout: 10000 }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
   );
+});
+
+const cepInput = document.getElementById("cepInput");
+const cepBtn = document.getElementById("cepBtn");
+
+async function locateByQuery() {
+  const raw = (cepInput?.value || "").trim();
+  if (!raw) {
+    showToast("Digite um CEP ou nome de rua/bairro.", true);
+    return;
+  }
+
+  geoStatus.textContent = "Buscando endereço em Alagoas...";
+  const digits = raw.replace(/\D/g, "");
+  let queryText = `${raw}, Alagoas, Brasil`;
+
+  if (digits.length === 8) {
+    try {
+      const viaRes = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const viaData = await viaRes.json();
+      if (!viaData.erro) {
+        if (viaData.uf && viaData.uf !== "AL") {
+          geoStatus.textContent = `O CEP informado pertence a ${viaData.localidade}/${viaData.uf} (fora de Alagoas).`;
+          showToast("Informe um CEP de Alagoas.", true);
+          return;
+        }
+        const matchedCity = allCities.find(
+          (c) => c.name.toLowerCase() === (viaData.localidade || "").toLowerCase()
+        );
+        if (matchedCity && matchedCity.id !== Number(citySelect.value)) {
+          await selectCity(matchedCity.id);
+        }
+        queryText = [viaData.logradouro, viaData.bairro, viaData.localidade, "Alagoas, Brasil"]
+          .filter(Boolean)
+          .join(", ");
+      }
+    } catch {
+      // Fallback para busca direta no Nominatim
+    }
+  }
+
+  try {
+    const nomRes = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(queryText)}`
+    );
+    const nomData = await nomRes.json();
+    if (!nomData || nomData.length === 0) {
+      geoStatus.textContent = "Endereço não encontrado. Tente informar rua + cidade ou outro CEP.";
+      showToast("Endereço não encontrado.", true);
+      return;
+    }
+
+    userLocation = {
+      lat: Number(nomData[0].lat),
+      lng: Number(nomData[0].lon),
+    };
+    selectedPointId = null;
+    geoStatus.textContent = `Localização definida por endereço (${nomData[0].display_name.split(",").slice(0, 2).join(",")}).`;
+    updateNearestAndRender();
+    showToast("Endereço localizado! Posto mais próximo destacado.");
+  } catch {
+    geoStatus.textContent = "Erro ao consultar serviço de localização.";
+    showToast("Erro ao buscar endereço.", true);
+  }
+}
+
+cepBtn?.addEventListener("click", locateByQuery);
+cepInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    locateByQuery();
+  }
 });
 
 favFilterBtn.addEventListener("click", () => {
