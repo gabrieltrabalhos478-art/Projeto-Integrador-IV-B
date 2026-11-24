@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from app.database import create_connection, get_database_url, get_db_path  # noqa: E402
+from app.database import DBConnection, create_connection, get_database_url, get_db_path  # noqa: E402
 
 DATA_DIR = BASE_DIR / "data"
 
@@ -30,7 +30,9 @@ CREATE TABLE vaccination_points (
   neighborhood  TEXT,
   phone         TEXT,
   opening_hours TEXT,
-  vaccines      TEXT
+  vaccines      TEXT,
+  latitude      REAL,
+  longitude     REAL
 );
 
 CREATE INDEX idx_points_city ON vaccination_points(city_id);
@@ -57,7 +59,9 @@ CREATE TABLE vaccination_points (
   neighborhood  TEXT,
   phone         TEXT,
   opening_hours TEXT,
-  vaccines      TEXT
+  vaccines      TEXT,
+  latitude      DOUBLE PRECISION,
+  longitude     DOUBLE PRECISION
 );
 
 CREATE INDEX idx_points_city ON vaccination_points(city_id);
@@ -68,6 +72,62 @@ def empty_to_none(value: str) -> str | None:
     """Convert empty CSV strings to SQL NULL."""
     cleaned = value.strip()
     return cleaned if cleaned else None
+
+
+def parse_float(value: str | None) -> float | None:
+    """Parse optional coordinate string into float or None."""
+    if not value:
+        return None
+    cleaned = value.strip()
+    return float(cleaned) if cleaned else None
+
+
+def backfill_coordinates(conn: DBConnection) -> None:
+    """Ensure latitude/longitude columns exist and backfill from CSV when NULL."""
+    points_csv = DATA_DIR / "vaccination_points.csv"
+    if not points_csv.exists():
+        return
+
+    if conn.is_postgres:
+        conn.execute(
+            "ALTER TABLE vaccination_points ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION"
+        )
+        conn.execute(
+            "ALTER TABLE vaccination_points ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
+        )
+    else:
+        cols = {
+            row["name"]
+            for row in conn.fetchall("PRAGMA table_info(vaccination_points)")
+        }
+        if "latitude" not in cols:
+            conn.execute("ALTER TABLE vaccination_points ADD COLUMN latitude REAL")
+        if "longitude" not in cols:
+            conn.execute("ALTER TABLE vaccination_points ADD COLUMN longitude REAL")
+
+    with points_csv.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        updates = [
+            (
+                parse_float(row.get("latitude")),
+                parse_float(row.get("longitude")),
+                int(row["id"]),
+            )
+            for row in reader
+            if row.get("latitude") or row.get("longitude")
+        ]
+
+    if updates:
+        conn.executemany(
+            """
+            UPDATE vaccination_points
+            SET latitude = COALESCE(latitude, ?),
+                longitude = COALESCE(longitude, ?)
+            WHERE id = ?
+            """,
+            updates,
+        )
+    conn.commit()
 
 
 def seed_database(db_path: Path | None = None) -> None:
@@ -108,14 +168,16 @@ def seed_database(db_path: Path | None = None) -> None:
                     empty_to_none(row["phone"]),
                     empty_to_none(row["opening_hours"]),
                     empty_to_none(row["vaccines"]),
+                    parse_float(row.get("latitude")),
+                    parse_float(row.get("longitude")),
                 )
                 for row in reader
             ]
         conn.executemany(
             """
             INSERT INTO vaccination_points
-              (id, city_id, name, address, neighborhood, phone, opening_hours, vaccines)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              (id, city_id, name, address, neighborhood, phone, opening_hours, vaccines, latitude, longitude)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             points_rows,
         )
@@ -134,6 +196,9 @@ def seed_database(db_path: Path | None = None) -> None:
         point_count = conn.fetchone(
             "SELECT COUNT(*) AS total FROM vaccination_points"
         )["total"]
+        geo_count = conn.fetchone(
+            "SELECT COUNT(*) AS total FROM vaccination_points WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+        )["total"]
         top5 = conn.fetchall(
             """
             SELECT c.name, COUNT(vp.id) AS total
@@ -148,7 +213,7 @@ def seed_database(db_path: Path | None = None) -> None:
         target_label = "PostgreSQL/Supabase" if conn.is_postgres else str(db_path or get_db_path())
         print(f"Banco recriado em: {target_label}")
         print(f"Cidades inseridas: {city_count}")
-        print(f"Pontos de vacinação inseridos: {point_count}")
+        print(f"Pontos de vacinação inseridos: {point_count} (com coordenadas: {geo_count})")
         print("Top 5 cidades com mais pontos:")
         for row in top5:
             print(f"  - {row['name']}: {row['total']}")

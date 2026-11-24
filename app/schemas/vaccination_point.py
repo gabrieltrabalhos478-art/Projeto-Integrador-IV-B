@@ -12,6 +12,8 @@ class VaccinationPointOut(BaseModel):
     phone: str | None = None
     opening_hours: str | None = None
     vaccines: list[str]
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class VaccinationPointPayload(BaseModel):
@@ -24,3 +26,5 @@ class VaccinationPointPayload(BaseModel):
     phone: str | None = Field(default=None, max_length=60)
     opening_hours: str | None = Field(default=None, max_length=200)
     vaccines: list[str] = Field(default_factory=list)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)

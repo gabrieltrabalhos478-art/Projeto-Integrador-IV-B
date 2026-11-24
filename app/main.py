@@ -11,13 +11,13 @@ from fastapi.staticfiles import StaticFiles
 from app.database import create_connection, get_database_url, get_db_path
 from app.errors import register_exception_handlers
 from app.routers import admin, cities, vaccination_points
-from scripts.seed import seed_database
+from scripts.seed import backfill_coordinates, seed_database
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 def ensure_database_seeded() -> None:
-    """Seed database on startup only if the cities table is missing or empty."""
+    """Seed database on startup if missing/empty and ensure geo columns exist."""
     db_path = None if get_database_url() else get_db_path()
     if db_path is not None and not db_path.exists():
         seed_database(db_path)
@@ -36,6 +36,7 @@ def ensure_database_seeded() -> None:
         if exists is not None:
             count_row = conn.fetchone("SELECT COUNT(*) AS total FROM cities")
             if count_row and count_row["total"] > 0:
+                backfill_coordinates(conn)
                 return
     finally:
         conn.close()

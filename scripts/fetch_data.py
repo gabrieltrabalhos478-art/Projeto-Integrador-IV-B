@@ -130,6 +130,8 @@ def fetch_vaccination_points(ibge6_to_city_id: dict[str, int]) -> None:
                 "phone",
                 "opening_hours",
                 "vaccines",
+                "latitude",
+                "longitude",
             ]
         )
         for unit in all_units:
@@ -154,6 +156,9 @@ def fetch_vaccination_points(ibge6_to_city_id: dict[str, int]) -> None:
                 skipped += 1
                 continue
 
+            lat = unit.get("latitude_estabelecimento_decimo_grau")
+            lng = unit.get("longitude_estabelecimento_decimo_grau")
+
             saved += 1
             writer.writerow(
                 [
@@ -169,6 +174,8 @@ def fetch_vaccination_points(ibge6_to_city_id: dict[str, int]) -> None:
                     clean_text(unit.get("numero_telefone_estabelecimento")) or "",
                     clean_text(unit.get("descricao_turno_atendimento")) or "",
                     PNI_BASIC_VACCINES,
+                    "" if lat is None else lat,
+                    "" if lng is None else lng,
                 ]
             )
 

@@ -5,7 +5,7 @@ def test_portal_and_admin_pages_load(client: TestClient) -> None:
     portal = client.get("/")
     assert portal.status_code == 200
     assert "text/html" in portal.headers["content-type"]
-    assert "Pontos de Vacinação em Alagoas" in portal.text
+    assert "Portal de Vacinação de Alagoas" in portal.text
 
     admin = client.get("/admin")
     assert admin.status_code == 200

@@ -16,6 +16,8 @@ def test_list_vaccination_points_success(client: TestClient) -> None:
             "phone": "(82) 3333-0000",
             "opening_hours": "08:00 - 17:00",
             "vaccines": ["BCG", "Hepatite B"],
+            "latitude": None,
+            "longitude": None,
         },
         {
             "id": 11,
@@ -26,6 +28,8 @@ def test_list_vaccination_points_success(client: TestClient) -> None:
             "phone": None,
             "opening_hours": None,
             "vaccines": [],
+            "latitude": None,
+            "longitude": None,
         },
     ]
 

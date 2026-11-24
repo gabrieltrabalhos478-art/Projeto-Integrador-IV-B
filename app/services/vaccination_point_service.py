@@ -36,6 +36,8 @@ def _row_to_out(row: Any) -> VaccinationPointOut:
         phone=row["phone"],
         opening_hours=row["opening_hours"],
         vaccines=parse_vaccines(row["vaccines"]),
+        latitude=row["latitude"],
+        longitude=row["longitude"],
     )
 
 
@@ -66,6 +68,8 @@ def create_point(
         phone=_clean_optional(payload.phone),
         opening_hours=_clean_optional(payload.opening_hours),
         vaccines=format_vaccines(payload.vaccines),
+        latitude=payload.latitude,
+        longitude=payload.longitude,
     )
     row = vaccination_point_repository.get_by_id(conn, new_id)
     return _row_to_out(row)
@@ -88,6 +92,8 @@ def update_point(
         phone=_clean_optional(payload.phone),
         opening_hours=_clean_optional(payload.opening_hours),
         vaccines=format_vaccines(payload.vaccines),
+        latitude=payload.latitude,
+        longitude=payload.longitude,
     )
     if not updated:
         raise PointNotFoundError(point_id)

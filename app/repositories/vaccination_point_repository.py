@@ -15,7 +15,9 @@ def list_by_city_id(conn: DBConnection, city_id: int) -> list[Any]:
           neighborhood,
           phone,
           opening_hours,
-          vaccines
+          vaccines,
+          latitude,
+          longitude
         FROM vaccination_points
         WHERE city_id = ?
         ORDER BY id ASC
@@ -36,7 +38,9 @@ def get_by_id(conn: DBConnection, point_id: int) -> Any:
           neighborhood,
           phone,
           opening_hours,
-          vaccines
+          vaccines,
+          latitude,
+          longitude
         FROM vaccination_points
         WHERE id = ?
         """,
@@ -54,15 +58,27 @@ def create_point(
     phone: str | None,
     opening_hours: str | None,
     vaccines: str | None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> int:
     """Insert a new vaccination point and return its generated id."""
     new_id = conn.insert_returning_id(
         """
         INSERT INTO vaccination_points
-          (city_id, name, address, neighborhood, phone, opening_hours, vaccines)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+          (city_id, name, address, neighborhood, phone, opening_hours, vaccines, latitude, longitude)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (city_id, name, address, neighborhood, phone, opening_hours, vaccines),
+        (
+            city_id,
+            name,
+            address,
+            neighborhood,
+            phone,
+            opening_hours,
+            vaccines,
+            latitude,
+            longitude,
+        ),
     )
     conn.commit()
     return new_id
@@ -79,6 +95,8 @@ def update_point(
     phone: str | None,
     opening_hours: str | None,
     vaccines: str | None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> bool:
     """Update an existing vaccination point. Returns True if a row was updated."""
     updated = conn.execute(
@@ -90,10 +108,23 @@ def update_point(
             neighborhood = ?,
             phone = ?,
             opening_hours = ?,
-            vaccines = ?
+            vaccines = ?,
+            latitude = ?,
+            longitude = ?
         WHERE id = ?
         """,
-        (city_id, name, address, neighborhood, phone, opening_hours, vaccines, point_id),
+        (
+            city_id,
+            name,
+            address,
+            neighborhood,
+            phone,
+            opening_hours,
+            vaccines,
+            latitude,
+            longitude,
+            point_id,
+        ),
     )
     conn.commit()
     return updated > 0

@@ -3,27 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portal de Vacinação — Alagoas</title>
+  <title>Portal de Vacinação de Alagoas — Unidades Básicas de Saúde (SUS)</title>
+  <meta name="description" content="Consulte pontos de vacinação e Unidades Básicas de Saúde (UBSs) nos 102 municípios de Alagoas, com mapa, posto mais próximo, rotas e vacinas disponíveis." />
+  <meta property="og:title" content="Portal de Vacinação de Alagoas" />
+  <meta property="og:description" content="Encontre a Unidade Básica de Saúde mais próxima nos 102 municípios de Alagoas." />
+  <meta property="og:type" content="website" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <header class="topbar">
+  <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
+
+  <div class="gov-strip">
+    <div class="container gov-strip-inner">
+      <span>ESTADO DE ALAGOAS • SAÚDE PÚBLICA</span>
+      <span>102 municípios • Dados oficiais IBGE &amp; CNES/SUS</span>
+    </div>
+  </div>
+  <div class="flag-stripe" aria-hidden="true"></div>
+
+  <header class="portal-banner">
     <div class="container">
-      <div class="topbar-row">
-        <div>
-          <span class="brand-badge">ALAGOAS • SUS / CNES</span>
-          <h1>Pontos de Vacinação em Alagoas</h1>
-          <p>Consulte Unidades Básicas de Saúde (UBSs) nos 102 municípios alagoanos.</p>
+      <div class="banner-row">
+        <div class="banner-brand">
+          <img
+            src="/static/bandeira-alagoas.png"
+            alt="Bandeira do Estado de Alagoas"
+            class="flag-img"
+            width="76"
+            height="52"
+          />
+          <div>
+            <span class="brand-kicker">Rede Estadual de Imunização</span>
+            <h1>Portal de Vacinação de Alagoas</h1>
+            <p class="banner-subtitle">Unidades Básicas de Saúde (UBSs) ativas no SUS em todo o estado</p>
+          </div>
         </div>
-        <nav class="nav-actions">
-          <a class="btn btn-light" href="/docs">Documentação API</a>
-          <a class="btn btn-light" href="/admin">Painel Admin</a>
+        <nav class="nav-actions" aria-label="Navegação principal">
+          <a class="btn btn-outline" href="/docs">Documentação API</a>
+          <a class="btn btn-primary" href="/admin">Painel Admin</a>
         </nav>
       </div>
     </div>
   </header>
 
-  <main class="container main-content">
+  <main id="conteudo-principal" class="container main-content">
+    <section class="intro-card" aria-labelledby="intro-titulo">
+      <h2 id="intro-titulo">Como este portal ajuda você</h2>
+      <p>
+        Aqui você encontra as Unidades Básicas de Saúde que realizam vacinação nos 102 municípios de Alagoas.
+        Ative sua localização para descobrir o posto mais próximo com tempo estimado de trajeto, salve seus favoritos e compartilhe facilmente.
+      </p>
+    </section>
+
     <section class="panel" aria-label="Filtros de busca">
       <div class="filters-grid">
         <div class="field">
@@ -47,9 +83,89 @@
       <div class="quick-cities" id="quickCities">
         <span class="quick-label">Acesso rápido:</span>
       </div>
+
+      <div class="geo-bar">
+        <div class="geo-actions">
+          <button id="geoBtn" class="btn btn-accent" type="button">
+            Usar minha localização (posto mais próximo)
+          </button>
+          <button
+            id="favFilterBtn"
+            class="btn btn-outline"
+            type="button"
+            aria-pressed="false"
+          >
+            Favoritos (<span id="favCount">0</span>)
+          </button>
+        </div>
+        <div id="geoStatus" class="geo-status" aria-live="polite">
+          Localização não ativada — exibindo todos os pontos da cidade.
+        </div>
+      </div>
     </section>
 
-    <section class="city-banner" id="cityBanner" style="display: none;">
+    <section
+      id="nearestSection"
+      class="nearest-highlight"
+      style="display: none;"
+      aria-live="polite"
+    >
+      <h3 id="nearestTitle">Posto mais próximo</h3>
+      <p id="nearestBody" class="info-line"></p>
+    </section>
+
+    <section class="map-section" aria-label="Mapa e estimativa de tempo por modal">
+      <div class="map-header">
+        <h2>Mapa de Pontos de Vacinação</h2>
+        <a class="btn btn-outline btn-sm" href="#pointsContainer">
+          Pular mapa para a lista acessível
+        </a>
+      </div>
+      <div class="map-layout">
+        <div
+          id="map"
+          class="map-canvas"
+          role="region"
+          aria-label="Mapa interativo com marcadores das Unidades Básicas de Saúde"
+        ></div>
+        <aside class="route-panel" aria-live="polite">
+          <h3 id="routePointName">Selecione um posto no mapa ou na lista</h3>
+          <p id="routePointAddress" class="info-line">
+            Ative sua localização ou clique em "Ver no mapa / Rota" em qualquer UBS para calcular distância e tempo estimado.
+          </p>
+          <div id="modalTimesGrid" class="modal-times-grid" style="display: none;">
+            <div class="time-box">
+              <span class="time-box-label">A pé (~5 km/h)</span>
+              <span class="time-box-value" id="timeWalk">—</span>
+            </div>
+            <div class="time-box">
+              <span class="time-box-label">Carro (~35 km/h)</span>
+              <span class="time-box-value" id="timeCar">—</span>
+            </div>
+            <div class="time-box">
+              <span class="time-box-label">Bicicleta (~15 km/h)</span>
+              <span class="time-box-value" id="timeBike">—</span>
+            </div>
+            <div class="time-box">
+              <span class="time-box-label">Ônibus / Moto (~22 km/h)</span>
+              <span class="time-box-value" id="timeTransit">—</span>
+            </div>
+          </div>
+          <a
+            id="googleMapsLink"
+            class="btn btn-primary btn-sm"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="display: none;"
+          >
+            Abrir rota no Google Maps
+          </a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="city-banner" id="cityBanner" style="display: none;" aria-live="polite">
       <div>
         <h2 id="cityTitle">—</h2>
         <div class="city-meta" id="cityMeta">—</div>
@@ -59,11 +175,17 @@
 
     <section id="pointsContainer" class="cards-grid" aria-live="polite"></section>
 
-    <p class="footer-note">
+    <footer class="footer-note">
       Fontes: IBGE (municípios) e CNES / Ministério da Saúde (UBSs ativas SUS). A lista de vacinas utiliza o calendário básico do PNI como referência informativa, podendo ser atualizada pelo painel administrativo.
-    </p>
+    </footer>
   </main>
 
+  <div id="portalToast" class="toast" role="status" aria-live="polite"></div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
