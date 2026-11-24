@@ -2,14 +2,14 @@
 
 ## 1. Visão Geral
 
-Esta API REST somente leitura fornece consulta aos **102 municípios** do estado de Alagoas e às **895 Unidades Básicas de Saúde (UBSs)** ativas no SUS registradas no CNES. O sistema foi projetado para ser simples, determinístico, facilmente auditável e hospedável em infraestrutura gratuita com disco efêmero.
+Esta aplicação reúne uma **API REST** e um **Portal Web com Painel Administrativo** para consulta aos **102 municípios** do estado de Alagoas e às **895 Unidades Básicas de Saúde (UBSs)** ativas no SUS registradas no CNES (incluindo coordenadas `latitude`/`longitude`). O sistema foi projetado para ser simples, determinístico, acessível (**WCAG 2.1 AA**) e persistente em **PostgreSQL (Supabase)** em produção, com fallback **SQLite** para desenvolvimento local e testes.
 
 ```mermaid
 flowchart LR
-    C["Cliente HTTP / Front-end / Swagger"] --> R["Routers (FastAPI)"]
-    R --> S["Services (Regras de Negócio)"]
+    C["Portal Web / Admin / Swagger / Cliente HTTP"] --> R["Routers (FastAPI)"]
+    R --> S["Services (Regras de Negócio & Auth)"]
     S --> Repo["Repositories (SQL Parametrizado)"]
-    Repo --> DB[("SQLite (vaccination.db)")]
+    Repo --> DB[("PostgreSQL (Supabase) / SQLite")]
 ```
 
 ---
@@ -19,18 +19,20 @@ flowchart LR
 ```text
 .
 ├── app/
-│   ├── main.py              # Instância FastAPI, CORS, handlers globais e /health
-│   ├── database.py          # Resolução de DB_PATH e dependência get_db()
+│   ├── main.py              # Instância FastAPI, CORS, lifespan, static, handlers e /health
+│   ├── auth.py              # Autenticação HMAC Bearer para o painel administrativo
+│   ├── database.py          # Adaptador unificado PostgreSQL (Supabase) e SQLite
 │   ├── errors.py            # Exceções de domínio e envelope único JSON de erro
-│   ├── routers/             # Camada HTTP: valida parâmetros e delega ao service
+│   ├── routers/             # Camada HTTP: cities, vaccination_points, portal e admin
 │   ├── services/            # Camada de negócio: regras, validações e mapeamento
 │   ├── repositories/        # Camada de dados: único ponto com SQL (parametrizado)
-│   └── schemas/             # Modelos Pydantic (contratos de serialização JSON)
+│   ├── schemas/             # Modelos Pydantic (contratos de serialização JSON)
+│   └── static/              # Front-end (Portal /, Painel /admin, CSS WCAG AA, Leaflet)
 ├── data/                    # CSVs versionados (IBGE + CNES) e README de fontes
 ├── scripts/
 │   ├── fetch_data.py        # Coleta reproduzível das APIs públicas (IBGE e CNES)
-│   └── seed.py              # Recriação idempotente do SQLite a partir dos CSVs
-├── tests/                   # Suíte pytest com SQLite temporário isolado
+│   └── seed.py              # Carga idempotente e migração de colunas no SQLite/PostgreSQL
+├── tests/                   # Suíte pytest (16 testes) com SQLite temporário isolado
 └── docs/
     └── architecture.md
 ```

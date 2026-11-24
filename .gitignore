@@ -4,3 +4,14 @@ __pycache__/
 *.db
 .pytest_cache/
 .env
+
+# Skills locais, rascunhos e manuais pessoais (mantidos localmente, fora do repo)
+.agents/
+skills-lock.json
+docs/01-*.md
+docs/02-*.md
+docs/03-*.md
+docs/04-*.md
+mapeamento-prompt-spec-kit.md
+plano-implementacao-pi-iv-b-fastapi.md
+image.png
