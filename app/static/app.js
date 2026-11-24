@@ -110,6 +110,17 @@ function initMap() {
     maxZoom: 19,
   }).addTo(map);
   markersLayer = window.L.layerGroup().addTo(map);
+
+  map.on("click", (e) => {
+    userLocation = {
+      lat: e.latlng.lat,
+      lng: e.latlng.lng,
+    };
+    selectedPointId = null;
+    geoStatus.textContent = "Localização marcada manualmente no mapa — postos ordenados do mais próximo.";
+    updateNearestAndRender();
+    showToast("Posição marcada no mapa! Posto mais próximo atualizado.");
+  });
 }
 
 function updateMapMarkers(points, shouldFitBounds = true) {
