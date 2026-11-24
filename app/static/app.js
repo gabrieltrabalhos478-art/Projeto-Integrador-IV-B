@@ -394,16 +394,20 @@ function getFilteredPoints() {
       return a._distanceKm - b._distanceKm;
     }
     if (sortMode === "group") {
-      const ga =
-        searchScope === "state"
-          ? a.city_name || "Alagoas"
-          : (a.neighborhood || "Sem bairro informado").trim();
-      const gb =
-        searchScope === "state"
-          ? b.city_name || "Alagoas"
-          : (b.neighborhood || "Sem bairro informado").trim();
-      const cmp = ga.localeCompare(gb, "pt-BR");
-      return cmp !== 0 ? cmp : a.name.localeCompare(b.name, "pt-BR");
+      if (searchScope === "state") {
+        const ca = (a.city_name || "Alagoas").trim();
+        const cb = (b.city_name || "Alagoas").trim();
+        const cmpCity = ca.localeCompare(cb, "pt-BR");
+        if (cmpCity !== 0) return cmpCity;
+      }
+      const na = (a.neighborhood || "Sem bairro informado").trim();
+      const nb = (b.neighborhood || "Sem bairro informado").trim();
+      const cmpNeigh = na.localeCompare(nb, "pt-BR");
+      if (cmpNeigh !== 0) return cmpNeigh;
+      if (userLocation && a._distanceKm != null && b._distanceKm != null) {
+        return a._distanceKm - b._distanceKm;
+      }
+      return a.name.localeCompare(b.name, "pt-BR");
     }
     return a.name.localeCompare(b.name, "pt-BR");
   });
@@ -503,22 +507,54 @@ function renderPoints(shouldFitBounds = true) {
     return;
   }
 
+  let html = "";
+  if (searchScope === "state") {
+    const byCity = new Map();
+    filtered.forEach((p) => {
+      const cityKey = (p.city_name || "Alagoas").trim();
+      if (!byCity.has(cityKey)) byCity.set(cityKey, new Map());
+      const neighKey = (p.neighborhood || "Sem bairro informado").trim();
+      const cityMap = byCity.get(cityKey);
+      if (!cityMap.has(neighKey)) cityMap.set(neighKey, []);
+      cityMap.get(neighKey).push(p);
+    });
+
+    byCity.forEach((neighMap, cityName) => {
+      let cityTotal = 0;
+      neighMap.forEach((arr) => {
+        cityTotal += arr.length;
+      });
+      html += `
+        <div class="municipality-group">
+          <span>Município: ${escapeHtml(cityName)}</span>
+          <span>${cityTotal} unidade(s)</span>
+        </div>
+      `;
+      neighMap.forEach((items, neighborhood) => {
+        html += `
+          <div class="neighborhood-group">
+            <span>Bairro: ${escapeHtml(neighborhood)}</span>
+            <span>${items.length} unidade(s)</span>
+          </div>
+        `;
+        html += items.map((p) => renderCardHtml(p, favs)).join("");
+      });
+    });
+    pointsContainer.innerHTML = html;
+    return;
+  }
+
   const groups = new Map();
   filtered.forEach((p) => {
-    const key =
-      searchScope === "state"
-        ? p.city_name || "Alagoas"
-        : (p.neighborhood || "Sem bairro informado").trim();
+    const key = (p.neighborhood || "Sem bairro informado").trim();
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(p);
   });
 
-  const labelPrefix = searchScope === "state" ? "Município" : "Bairro";
-  let html = "";
-  groups.forEach((items, groupName) => {
+  groups.forEach((items, neighborhood) => {
     html += `
       <div class="neighborhood-group">
-        <span>${labelPrefix}: ${escapeHtml(groupName)}</span>
+        <span>Bairro: ${escapeHtml(neighborhood)}</span>
         <span>${items.length} unidade(s)</span>
       </div>
     `;
@@ -535,7 +571,6 @@ async function loadInitialData() {
       const parsed = JSON.parse(savedGeo);
       if (parsed.lat && parsed.lng) {
         userLocation = parsed;
-        sortSelect.value = "distance";
         collapseGeoStep(`Localização salva: ${parsed.label || "CEP/Endereço"}`);
       }
     }
@@ -604,7 +639,6 @@ geoBtn.addEventListener("click", () => {
           ? `Localização por IP (~${accKm} km de margem). Para rua exata no PC, informe seu CEP.`
           : "Localização do dispositivo definida!";
       geoStatus.textContent = msg;
-      sortSelect.value = "distance";
       collapseGeoStep(msg);
       showToast("Localização definida! Agora escolha Municipal ou Estadual e clique em Mostrar Postos.");
     },
@@ -686,7 +720,6 @@ async function locateByQuery() {
         JSON.stringify({ ...userLocation, label: shortLabel })
       );
     } catch {}
-    sortSelect.value = "distance";
     collapseGeoStep(`Localização definida: ${shortLabel}`);
     showToast("Endereço localizado! Clique em Mostrar Postos para ver os mais próximos.");
   } catch {

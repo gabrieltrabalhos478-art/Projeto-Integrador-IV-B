@@ -450,6 +450,25 @@ body.high-contrast .footer-portal {
   gap: 14px;
 }
 
+.municipality-group {
+  grid-column: 1 / -1;
+  margin-top: 18px;
+  padding: 10px 16px;
+  background: var(--al-blue-dark);
+  color: #FFFFFF;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+body.high-contrast .municipality-group {
+  background: #FACC15;
+  color: #000000;
+}
+
 .neighborhood-group {
   grid-column: 1 / -1;
   margin-top: 12px;
@@ -465,7 +484,26 @@ body.high-contrast .footer-portal {
   color: var(--al-blue-dark);
 }
 
-body.high-contrast .neighborhood-group {
+body.high-contrast .municipality-group {
+  grid-column: 1 / -1;
+  margin-top: 18px;
+  padding: 10px 16px;
+  background: var(--al-blue-dark);
+  color: #FFFFFF;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+body.high-contrast .municipality-group {
+  background: #FACC15;
+  color: #000000;
+}
+
+.neighborhood-group {
   border-left-color: #FACC15;
   border: 1px solid #FFFFFF;
 }
