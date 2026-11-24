@@ -4,9 +4,9 @@ API REST somente leitura desenvolvida para o **Projeto Integrador IV-B (CESMAC)*
 
 Fornece consulta aos **102 municípios de Alagoas** e a **895 Unidades Básicas de Saúde (UBSs)** ativas no SUS.
 
-- **Documentação interativa (Swagger):** `/docs`
+- **Documentação interativa (Swagger):** https://projeto-integrador-iv-b.onrender.com/docs
 - **Arquitetura e decisões:** [docs/architecture.md](docs/architecture.md)
-- **URL da API online:** *a preencher após deploy no Render*
+- **URL da API online:** https://projeto-integrador-iv-b.onrender.com
 
 ---
 
