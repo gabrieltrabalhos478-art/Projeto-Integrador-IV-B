@@ -1,12 +1,13 @@
-# API REST — Pontos de Vacinação (Alagoas)
+# Portal & API REST — Pontos de Vacinação (Alagoas)
 
-API REST somente leitura desenvolvida para o **Projeto Integrador IV-B (CESMAC)** — disciplinas de **Arquitetura de Sistemas** e **Integração de Aplicações**.
+Portal Web e API REST desenvolvidos para o **Projeto Integrador IV-B (CESMAC)** — disciplinas de **Arquitetura de Sistemas** e **Integração de Aplicações**.
 
-Fornece consulta aos **102 municípios de Alagoas** e a **895 Unidades Básicas de Saúde (UBSs)** ativas no SUS.
+Fornece consulta aos **102 municípios de Alagoas** e a **895 Unidades Básicas de Saúde (UBSs)** ativas no SUS, com mapa interativo, busca por localização/CEP, filtro por bairro/vacina, favoritos e painel administrativo.
 
+- **Portal Público:** https://projeto-integrador-iv-b.onrender.com
+- **Painel Administrativo:** https://projeto-integrador-iv-b.onrender.com/admin
 - **Documentação interativa (Swagger):** https://projeto-integrador-iv-b.onrender.com/docs
 - **Arquitetura e decisões:** [docs/architecture.md](docs/architecture.md)
-- **URL da API online:** https://projeto-integrador-iv-b.onrender.com
 
 ---
 
@@ -15,7 +16,8 @@ Fornece consulta aos **102 municípios de Alagoas** e a **895 Unidades Básicas 
 - **Python 3.11+** (testado em 3.14)
 - **FastAPI** + **Uvicorn**
 - **Pydantic v2**
-- **SQLite** (`sqlite3` da biblioteca padrão)
+- **PostgreSQL / Supabase** (`psycopg[binary]` via `DATABASE_URL` em produção) e **SQLite** (fallback local e testes)
+- **Front-end:** HTML/CSS/JS + **Leaflet / OpenStreetMap** (WCAG 2.1 AA, alto contraste e zoom de texto)
 - **pytest** + **httpx** (`TestClient`)
 
 ---
@@ -119,9 +121,3 @@ Detalhes completos em [data/README.md](data/README.md):
 - **Municípios:** API de Localidades do IBGE (UF `27` — Alagoas).
 - **Pontos de Vacinação:** API Dados Abertos do Ministério da Saúde / CNES (`codigo_tipo_unidade = 2`, unidades ativas com atendimento SUS).
 - **Limitação (`vaccines`):** O CNES não informa estoque de vacinas por unidade; portanto, o campo `vaccines` apresenta a lista padrão do calendário básico do PNI (**dado ilustrativo, baseado no calendário básico**).
-
----
-
-## Autores
-- Integrante 1 *(preencher)*
-- Integrante 2 *(preencher)*
